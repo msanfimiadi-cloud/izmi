@@ -5,6 +5,7 @@ namespace Izmi
     public sealed class PrototypeHud : MonoBehaviour
     {
         private SimulationClock simulationClock;
+        private CityPrototypeController cityPrototype;
         private GUIStyle panelStyle;
         private GUIStyle titleStyle;
         private GUIStyle bodyStyle;
@@ -17,6 +18,7 @@ namespace Izmi
         private void Awake()
         {
             simulationClock = GetComponent<SimulationClock>();
+            cityPrototype = GetComponent<CityPrototypeController>();
         }
 
         private void OnGUI()
@@ -33,7 +35,7 @@ namespace Izmi
             GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
 
             var panelWidth = 360f;
-            var panelHeight = 148f;
+            var panelHeight = 198f;
             GUILayout.BeginArea(
                 new Rect(28f, 26f, panelWidth, panelHeight),
                 panelStyle);
@@ -51,6 +53,29 @@ namespace Izmi
             DrawSpeedButton("×5", 5f);
             DrawSpeedButton("×20", 20f);
             GUILayout.EndHorizontal();
+            GUILayout.Space(9f);
+
+            if (cityPrototype != null)
+            {
+                var navigationLabel = cityPrototype.IsCityView
+                    ? "←  ВЕРНУТЬСЯ К ПЛАНЕТЕ"
+                    : "ПРИБЛИЗИТЬСЯ К ГОРОДУ  →";
+
+                if (GUILayout.Button(
+                        navigationLabel,
+                        buttonStyle,
+                        GUILayout.Height(32f)))
+                {
+                    if (cityPrototype.IsCityView)
+                    {
+                        cityPrototype.ExitCity();
+                    }
+                    else
+                    {
+                        cityPrototype.EnterCity();
+                    }
+                }
+            }
 
             GUILayout.EndArea();
             GUI.matrix = previousMatrix;
