@@ -279,7 +279,7 @@ namespace Izmi
                 {
                     var strategyRect = compactLayout
                         ? new Rect(safeArea.x + 10f, safeArea.y + 64f, safeArea.width - 20f, safeArea.height - 74f)
-                        : new Rect(virtualWidth - 388f, safeArea.y + 26f, 360f, Mathf.Min(552f, virtualHeight - safeArea.y - 40f));
+                        : new Rect(virtualWidth - 388f, safeArea.y + 26f, 360f, Mathf.Min(780f, virtualHeight - safeArea.y - 40f));
                     DrawGlobalStrategyPanel(strategyRect, compactLayout);
                 }
                 if (globalOutbreak.HasEndingReport)
@@ -460,7 +460,24 @@ namespace Izmi
             GUILayout.Space(7f);
 
             GUILayout.Label(globalOutbreak.ResponseMessage, titleStyle);
-            GUILayout.Space(6f);
+            GUILayout.Space(8f);
+
+            GUILayout.Label("КТО ПОЛУЧИТ ОРУЖИЕ  •  СМЕНА: 18", titleStyle);
+            GUILayout.Label(globalOutbreak.ArmamentDoctrine, eventTextStyle);
+            GUILayout.BeginHorizontal();
+            DrawArmamentButton("ГРАЖДАНСКИЕ", 1);
+            DrawArmamentButton("ТОЛЬКО АРМИЯ", 2);
+            GUILayout.EndHorizontal();
+            GUILayout.Space(7f);
+
+            GUILayout.Label("КОМУ ОТДАВАТЬ ПРОДОВОЛЬСТВИЕ  •  СМЕНА: 12", titleStyle);
+            GUILayout.Label(globalOutbreak.RationDoctrine, eventTextStyle);
+            GUILayout.BeginHorizontal();
+            DrawRationButton("МИРНЫМ", 1);
+            DrawRationButton("АРМИИ", 2);
+            DrawRationButton("ПОСЕЛЕНИЯМ", 3);
+            GUILayout.EndHorizontal();
+            GUILayout.Space(9f);
 
             if (GUILayout.Button("МОБИЛИЗАЦИЯ И ГРАНИЦЫ  •  25", buttonStyle, GUILayout.Height(36f)))
             {
@@ -490,6 +507,29 @@ namespace Izmi
                 (Screen.height - safe.yMax) / scale,
                 safe.width / scale,
                 safe.height / scale);
+        }
+
+        private void DrawArmamentButton(string label, int doctrine)
+        {
+            var style = globalOutbreak.ArmamentDoctrine ==
+                (doctrine == 1 ? "ВООРУЖАТЬ ГРАЖДАНСКИХ" : "ОРУЖИЕ ТОЛЬКО ВОЕННЫМ")
+                ? activeButtonStyle
+                : buttonStyle;
+            if (GUILayout.Button(label, style, GUILayout.Height(42f)))
+            {
+                globalOutbreak.SetArmamentDoctrine(doctrine);
+            }
+        }
+
+        private void DrawRationButton(string label, int doctrine)
+        {
+            var selected = doctrine == 1 && globalOutbreak.RationDoctrine == "ПРИОРИТЕТ МИРНЫМ"
+                || doctrine == 2 && globalOutbreak.RationDoctrine == "ПРИОРИТЕТ АРМИИ"
+                || doctrine == 3 && globalOutbreak.RationDoctrine == "ПРИОРИТЕТ ПОСЕЛЕНИЯМ";
+            if (GUILayout.Button(label, selected ? activeButtonStyle : buttonStyle, GUILayout.Height(42f)))
+            {
+                globalOutbreak.SetRationDoctrine(doctrine);
+            }
         }
 
         private void DrawInfectionBar(float ratio)
