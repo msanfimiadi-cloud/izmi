@@ -34,6 +34,7 @@ namespace Izmi
 
         private readonly List<RegionState> regions = new List<RegionState>();
         private readonly List<Flight> flights = new List<Flight>();
+        private readonly List<string> newsFeed = new List<string>();
         private Transform globe;
         private Material healthyMaterial;
         private Material warningMaterial;
@@ -68,6 +69,7 @@ namespace Izmi
         private bool endingReportVisible;
 
         public IReadOnlyList<RegionState> Regions => regions;
+        public IReadOnlyList<string> NewsFeed => newsFeed;
         public long TotalPopulation { get; private set; }
         public long TotalInfected { get; private set; }
         public long TotalDead { get; private set; }
@@ -220,6 +222,11 @@ namespace Izmi
             CreateRoute(4, 7);
             LoadRegionalState();
             LoadPolicyState();
+            LoadNewsFeed();
+            if (newsFeed.Count == 0)
+            {
+                AddNews("Первые сообщения о неизвестной инфекции поступили из Юго-Восточной Азии.");
+            }
             SelectedRegion = regions.Count > 3 ? regions[3] : regions[0];
             RefreshTotals();
             EvaluateEnding();
@@ -321,6 +328,10 @@ namespace Izmi
         {
             endingType = type;
             endingReportVisible = true;
+            AddNews(type == 1 ? "Учёные объявили о победе над инфекцией."
+                : type == 2 ? "Военные сообщили о ликвидации последних очагов."
+                : type == 3 ? "Последние выжившие укрылись в защищённых поселениях."
+                : "Глобальная сеть наблюдения больше не фиксирует живых людей.");
             PlayerPrefs.SetInt("IZMI.Ending.Type", endingType);
             PlayerPrefs.SetInt("IZMI.Ending.Acknowledged", 0);
             PlayerPrefs.Save();
@@ -387,6 +398,7 @@ namespace Izmi
             SelectedRegion.WaterRisk = Mathf.Max(0f, SelectedRegion.WaterRisk - 24f);
             cureResearch = Mathf.Min(100f, cureResearch + 2f);
             SetResponseMessage("ВОДОСНАБЖЕНИЕ РЕГИОНА ОЧИЩЕНО");
+            AddNews("В регионе «" + RegionDisplayName(SelectedRegion.Name) + "» очищена система водоснабжения.");
             SaveRegionalState();
             return true;
         }
@@ -405,6 +417,7 @@ namespace Izmi
             SelectedRegion.AnimalRisk = Mathf.Max(0f, SelectedRegion.AnimalRisk - 24f);
             shelterReadiness = Mathf.Min(100f, shelterReadiness + 2f);
             SetResponseMessage("ВЕТЕРИНАРНЫЕ ГРУППЫ РАЗВЁРНУТЫ");
+            AddNews("В регионе «" + RegionDisplayName(SelectedRegion.Name) + "» развёрнуты ветеринарные группы.");
             SaveRegionalState();
             return true;
         }
@@ -514,6 +527,7 @@ namespace Izmi
                 SetResponseMessage("НАЧАТА ПОДГОТОВКА БЕЗОПАСНЫХ ЗОН");
             }
 
+            AddNews("Кризисный совет: " + GetCrisisChoiceLabel(choice).ToLowerInvariant() + ".");
             crisisEventVisible = false;
             crisisEventIndex++;
             PlayerPrefs.SetInt("IZMI.Events.Index", crisisEventIndex);
@@ -564,6 +578,7 @@ namespace Izmi
             warReadiness = Mathf.Min(100f, warReadiness + 12f);
             travelRestrictionTimer = Mathf.Max(travelRestrictionTimer, 30f);
             SetResponseMessage("ВОЕННЫЕ ОГРАНИЧИЛИ ПЕРЕМЕЩЕНИЯ");
+            AddNews("Военные ограничили перемещения и усилили охрану границ.");
             SavePolicyState();
             return true;
         }
@@ -577,6 +592,9 @@ namespace Izmi
             SetResponseMessage(cureResearch >= 100f
                 ? "ПРОТОТИП ЛЕЧЕНИЯ ГОТОВ"
                 : "ИССЛЕДОВАНИЯ УСКОРЕНЫ");
+            AddNews(cureResearch >= 100f
+                ? "Международная лаборатория представила прототип лечения."
+                : "Дополнительные ресурсы направлены на поиск лечения.");
             SavePolicyState();
             return true;
         }
@@ -593,6 +611,7 @@ namespace Izmi
                 LivingPopulation,
                 protectedPopulation + 150000L + safeSettlementCount * 25000L);
             SetResponseMessage("НОВОЕ ПОСЕЛЕНИЕ ПРИНИМАЕТ ЛЮДЕЙ");
+            AddNews("Открыто новое автономное поселение для выживших.");
             SavePolicyState();
             return true;
         }
@@ -655,6 +674,47 @@ namespace Izmi
             if (nearest != null)
             {
                 SelectedRegion = nearest;
+            }
+        }
+
+        private void LoadNewsFeed()
+        {
+            newsFeed.Clear();
+            var count = Mathf.Clamp(PlayerPrefs.GetInt("IZMI.News.Count", 0), 0, 8);
+            for (var index = 0; index < count; index++)
+            {
+                var item = PlayerPrefs.GetString("IZMI.News." + index, string.Empty);
+                if (!string.IsNullOrEmpty(item)) newsFeed.Add(item);
+            }
+        }
+
+        private void AddNews(string message)
+        {
+            var clock = GetComponent<SimulationClock>();
+            var stamp = clock != null ? clock.CurrentDate.ToString("dd.MM • HH:mm") : "СЕЙЧАС";
+            newsFeed.Insert(0, stamp + " — " + message);
+            if (newsFeed.Count > 8) newsFeed.RemoveAt(newsFeed.Count - 1);
+
+            PlayerPrefs.SetInt("IZMI.News.Count", newsFeed.Count);
+            for (var index = 0; index < newsFeed.Count; index++)
+            {
+                PlayerPrefs.SetString("IZMI.News." + index, newsFeed[index]);
+            }
+        }
+
+        private static string RegionDisplayName(string name)
+        {
+            switch (name)
+            {
+                case "Europe": return "Европа";
+                case "Asia": return "Азия";
+                case "North America": return "Северная Америка";
+                case "First anomaly": return "Юго-Восточная Азия";
+                case "Africa": return "Африка";
+                case "South America": return "Южная Америка";
+                case "Australia": return "Австралия";
+                case "Middle East": return "Ближний Восток";
+                default: return name;
             }
         }
 
@@ -910,6 +970,7 @@ namespace Izmi
                     {
                         region.Infected = UnityEngine.Random.Range(5, 24);
                         SetResponseMessage("ИНФЕКЦИЯ ВЕРНУЛАСЬ ИЗ ОКРУЖАЮЩЕЙ СРЕДЫ");
+                        AddNews("Инфекция вернулась в регион «" + RegionDisplayName(region.Name) + "» из природного резервуара.");
                         return;
                     }
                 }
@@ -942,6 +1003,7 @@ namespace Izmi
                 if (UnityEngine.Random.value < (0.08f + pressure * 0.32f) * borderControl)
                 {
                     region.Infected = UnityEngine.Random.Range(8, 42);
+                    AddNews("Первый подтверждённый случай зарегистрирован в регионе «" + RegionDisplayName(region.Name) + "».");
                     return;
                 }
             }
