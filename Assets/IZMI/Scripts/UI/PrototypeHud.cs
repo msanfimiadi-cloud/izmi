@@ -45,7 +45,7 @@ namespace Izmi
             var panelHeight =
                 cityPrototype != null && cityPrototype.IsCityView
                     ? 390f
-                    : 438f;
+                    : 468f;
             GUILayout.BeginArea(
                 new Rect(28f, 26f, panelWidth, panelHeight),
                 panelStyle);
@@ -76,6 +76,10 @@ namespace Izmi
                 GUILayout.Label(
                     "ПОГИБЛО: " + globalOutbreak.TotalDead.ToString("N0") +
                     "   ВЫЗДОРОВЕЛО: " + globalOutbreak.TotalRecovered.ToString("N0"),
+                    titleStyle);
+                GUILayout.Label(
+                    "ЖИВЫ: " + globalOutbreak.LivingPopulation.ToString("N0") +
+                    "   " + globalOutbreak.HumanityStatus,
                     titleStyle);
                 GUILayout.Label(
                     "ЗАТРОНУТО РЕГИОНОВ: " + globalOutbreak.InfectedRegions +
@@ -270,6 +274,10 @@ namespace Izmi
             GUILayout.Space(7f);
 
             GUILayout.Label("СОСТОЯНИЕ МИРА: " + globalOutbreak.WorldCondition, titleStyle);
+            GUILayout.Label(
+                "ПОСЕЛЕНИЯ: " + globalOutbreak.SafeSettlementCount +
+                "   ПОД ЗАЩИТОЙ: " + globalOutbreak.ProtectedPopulation.ToString("N0"),
+                titleStyle);
             DrawResourceRow("ЕДА", globalOutbreak.FoodSupply);
             DrawResourceRow("МЕДИКАМЕНТЫ", globalOutbreak.MedicalSupply);
             DrawResourceRow("БЕЗОПАСНОСТЬ", globalOutbreak.Security);
