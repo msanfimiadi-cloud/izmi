@@ -73,12 +73,17 @@ namespace Izmi
 
         private void Update()
         {
-            if (globe == null || regions.Count == 0 || Time.timeScale <= 0f)
+            if (globe == null || regions.Count == 0)
             {
                 return;
             }
 
             HandleRegionSelection();
+            if (Time.timeScale <= 0f)
+            {
+                return;
+            }
+
             SimulateLocalGrowth(Time.deltaTime);
             spreadPulse += Time.deltaTime;
             if (spreadPulse >= 2.4f)
@@ -171,7 +176,7 @@ namespace Izmi
 
                 var saturation = 1d - region.Infected / region.Population;
                 var dailyGrowth = 0.24d * saturation;
-                var gameDays = deltaTime / 38d;
+                var gameDays = deltaTime / 240d;
                 region.Infected = Math.Min(
                     region.Population,
                     region.Infected * Math.Exp(dailyGrowth * gameDays));
