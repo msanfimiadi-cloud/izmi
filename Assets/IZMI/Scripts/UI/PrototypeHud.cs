@@ -12,6 +12,7 @@ namespace Izmi
         private GUIStyle bodyStyle;
         private GUIStyle activeButtonStyle;
         private GUIStyle buttonStyle;
+        private GUIStyle eventTextStyle;
         private Texture2D panelTexture;
         private Texture2D activeTexture;
         private bool stylesReady;
@@ -170,9 +171,44 @@ namespace Izmi
                 (cityPrototype == null || !cityPrototype.IsCityView))
             {
                 DrawGlobalStrategyPanel(scale);
+                if (globalOutbreak.HasCrisisEvent)
+                {
+                    DrawCrisisEventPanel(scale);
+                }
             }
 
             GUI.matrix = previousMatrix;
+        }
+
+        private void DrawCrisisEventPanel(float scale)
+        {
+            var virtualWidth = Screen.width / scale;
+            var virtualHeight = Screen.height / scale;
+            var width = Mathf.Min(580f, virtualWidth - 40f);
+            var x = (virtualWidth - width) * 0.5f;
+            var y = Mathf.Max(20f, virtualHeight - 282f);
+
+            GUILayout.BeginArea(new Rect(x, y, width, 252f), panelStyle);
+            GUILayout.Label("СРОЧНОЕ СОБЫТИЕ", titleStyle);
+            GUILayout.Space(4f);
+            GUILayout.Label(globalOutbreak.CrisisEventTitle, bodyStyle);
+            GUILayout.Space(5f);
+            GUILayout.Label(globalOutbreak.CrisisEventDescription, eventTextStyle);
+            GUILayout.FlexibleSpace();
+
+            for (var choice = 0; choice < 3; choice++)
+            {
+                var selectedChoice = choice;
+                if (GUILayout.Button(
+                        globalOutbreak.GetCrisisChoiceLabel(choice),
+                        buttonStyle,
+                        GUILayout.Height(34f)))
+                {
+                    globalOutbreak.SelectCrisisChoice(selectedChoice);
+                }
+            }
+
+            GUILayout.EndArea();
         }
 
         private static string LocalizeRegion(string regionName)
@@ -300,6 +336,13 @@ namespace Izmi
                 fontSize = 15,
                 fontStyle = FontStyle.Bold,
                 normal = { textColor = new Color(0.82f, 0.88f, 0.94f) }
+            };
+
+            eventTextStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 16,
+                wordWrap = true,
+                normal = { textColor = new Color(0.9f, 0.93f, 0.96f) }
             };
 
             activeButtonStyle = new GUIStyle(buttonStyle);
