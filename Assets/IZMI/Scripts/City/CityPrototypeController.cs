@@ -21,6 +21,7 @@ namespace Izmi
         public PrototypeInfectionSystem InfectionSystem { get; private set; }
         public int CommandPoints => Mathf.FloorToInt(commandPoints);
         public string CommandMessage => commandMessage;
+        public string ActiveRegionName { get; private set; } = "First anomaly";
 
         private void Awake()
         {
@@ -127,6 +128,12 @@ namespace Izmi
             }
 
             ResolveWorldObjects();
+            var outbreak = GetComponent<GlobalOutbreakSystem>();
+            if (outbreak != null && outbreak.SelectedRegion != null)
+            {
+                ActiveRegionName = outbreak.SelectedRegion.Name;
+            }
+
             if (worldCamera == null || globe == null)
             {
                 return;
