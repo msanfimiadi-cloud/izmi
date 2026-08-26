@@ -71,13 +71,18 @@ namespace Izmi
             var oldMatrix = GUI.matrix;
             GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
 
-            var virtualWidth = Screen.width / scale;
-            var virtualHeight = Screen.height / scale;
-            var width = Mathf.Min(560f, virtualWidth - 36f);
-            var height = confirmNewWorld ? 360f : 330f;
+            var safe = Screen.safeArea;
+            var safeRect = new Rect(
+                safe.x / scale,
+                (Screen.height - safe.yMax) / scale,
+                safe.width / scale,
+                safe.height / scale);
+            var width = Mathf.Min(560f, safeRect.width - 24f);
+            var desiredHeight = confirmNewWorld ? 360f : 330f;
+            var height = Mathf.Min(desiredHeight, safeRect.height - 24f);
             var rect = new Rect(
-                (virtualWidth - width) * 0.5f,
-                (virtualHeight - height) * 0.5f,
+                safeRect.x + (safeRect.width - width) * 0.5f,
+                safeRect.y + (safeRect.height - height) * 0.5f,
                 width,
                 height);
 
