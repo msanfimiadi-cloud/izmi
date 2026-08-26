@@ -35,7 +35,10 @@ namespace Izmi
             GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
 
             var panelWidth = 360f;
-            var panelHeight = 198f;
+            var panelHeight =
+                cityPrototype != null && cityPrototype.IsCityView
+                    ? 226f
+                    : 198f;
             GUILayout.BeginArea(
                 new Rect(28f, 26f, panelWidth, panelHeight),
                 panelStyle);
@@ -54,6 +57,17 @@ namespace Izmi
             DrawSpeedButton("×20", 20f);
             GUILayout.EndHorizontal();
             GUILayout.Space(9f);
+
+            if (cityPrototype != null && cityPrototype.IsCityView &&
+                cityPrototype.InfectionSystem != null)
+            {
+                var infection = cityPrototype.InfectionSystem;
+                GUILayout.Label(
+                    "ЗАРАЖЕНО: " + infection.InfectedCount +
+                    " / " + infection.PopulationCount,
+                    titleStyle);
+                GUILayout.Space(5f);
+            }
 
             if (cityPrototype != null)
             {
