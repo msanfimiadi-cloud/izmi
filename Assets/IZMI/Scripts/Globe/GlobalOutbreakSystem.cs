@@ -64,6 +64,8 @@ namespace Izmi
         private double offlineElapsedGameMinutes;
         private long offlineNewInfections;
         private int offlineNewRegions;
+        private int endingType;
+        private bool endingReportVisible;
 
         public IReadOnlyList<RegionState> Regions => regions;
         public long TotalPopulation { get; private set; }
@@ -90,6 +92,46 @@ namespace Izmi
         public double OfflineElapsedGameMinutes => offlineElapsedGameMinutes;
         public long OfflineNewInfections => offlineNewInfections;
         public int OfflineNewRegions => offlineNewRegions;
+        public bool HasEndingReport => endingReportVisible;
+        public string CurrentObjective
+        {
+            get
+            {
+                if (StrategicDirection == "ПОДГОТОВКА К ВОЙНЕ")
+                    return "ДОСТИЧЬ 100% ГОТОВНОСТИ И ЛИКВИДИРОВАТЬ ОЧАГИ";
+                if (StrategicDirection == "ПОИСК ЛЕЧЕНИЯ")
+                    return "ЗАВЕРШИТЬ ЛЕЧЕНИЕ И ОЧИСТИТЬ СРЕДУ";
+                if (StrategicDirection == "СОХРАНЕНИЕ ЛЮДЕЙ")
+                    return "СОЗДАТЬ ПОСЕЛЕНИЯ И СОХРАНИТЬ ВЫЖИВШИХ";
+                return "ВЫБРАТЬ ПЕРВЫЙ ГЛОБАЛЬНЫЙ ОТВЕТ";
+            }
+        }
+        public string EndingTitle
+        {
+            get
+            {
+                if (endingType == 1) return "ЧЕЛОВЕЧЕСТВО ВЫЛЕЧЕНО";
+                if (endingType == 2) return "МИР ПОД ВОЕННЫМ КОНТРОЛЕМ";
+                if (endingType == 3) return "ПОСЛЕДНИЕ ЛЮДИ СПАСЕНЫ";
+                if (endingType == 4) return "ЧЕЛОВЕЧЕСТВО ИСЧЕЗЛО";
+                return string.Empty;
+            }
+        }
+        public string EndingDescription
+        {
+            get
+            {
+                if (endingType == 1)
+                    return "Лечение завершено, природные резервуары очищены. Впервые за долгое время новых случаев нет.";
+                if (endingType == 2)
+                    return "Границы, армия и жёсткий контроль остановили распространение. Цена порядка ещё будет подсчитана.";
+                if (endingType == 3)
+                    return "От прежнего мира осталось не больше ста человек, но защищённые поселения продолжают жить.";
+                if (endingType == 4)
+                    return "Запасы исчерпаны, убежища опустели. На планете больше не осталось живых людей.";
+                return string.Empty;
+            }
+        }
         public string HumanityStatus
         {
             get
@@ -180,6 +222,7 @@ namespace Izmi
             LoadPolicyState();
             SelectedRegion = regions.Count > 3 ? regions[3] : regions[0];
             RefreshTotals();
+            EvaluateEnding();
             CheckCrisisEvent();
         }
 
@@ -228,7 +271,59 @@ namespace Izmi
             }
             RefreshVisuals();
             RefreshTotals();
+            EvaluateEnding();
             CheckCrisisEvent();
+        }
+
+        public void AcknowledgeEnding()
+        {
+            endingReportVisible = false;
+            PlayerPrefs.SetInt("IZMI.Ending.Acknowledged", 1);
+            PlayerPrefs.Save();
+        }
+
+        private void EvaluateEnding()
+        {
+            if (endingType != 0)
+            {
+                return;
+            }
+
+            var reservoirsControlled = true;
+            foreach (var region in regions)
+            {
+                if (region.WaterRisk >= 5f || region.AnimalRisk >= 5f)
+                {
+                    reservoirsControlled = false;
+                    break;
+                }
+            }
+
+            if (LivingPopulation <= 0L)
+            {
+                SetEnding(4);
+            }
+            else if (LivingPopulation <= 100L && protectedPopulation >= 50L)
+            {
+                SetEnding(3);
+            }
+            else if (cureResearch >= 100f && TotalInfected <= 1000L && reservoirsControlled)
+            {
+                SetEnding(1);
+            }
+            else if (warReadiness >= 100f && InfectedRegions == 0 && security >= 25f)
+            {
+                SetEnding(2);
+            }
+        }
+
+        private void SetEnding(int type)
+        {
+            endingType = type;
+            endingReportVisible = true;
+            PlayerPrefs.SetInt("IZMI.Ending.Type", endingType);
+            PlayerPrefs.SetInt("IZMI.Ending.Acknowledged", 0);
+            PlayerPrefs.Save();
         }
 
         public void DismissOfflineReport()
@@ -578,6 +673,9 @@ namespace Izmi
                 PlayerPrefs.GetString("IZMI.Survival.Protected", "0"),
                 out protectedPopulation);
             crisisEventIndex = PlayerPrefs.GetInt("IZMI.Events.Index", 0);
+            endingType = PlayerPrefs.GetInt("IZMI.Ending.Type", 0);
+            endingReportVisible =
+                endingType != 0 && PlayerPrefs.GetInt("IZMI.Ending.Acknowledged", 0) == 0;
         }
 
         private void SavePolicyState()
