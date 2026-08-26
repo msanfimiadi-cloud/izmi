@@ -9,7 +9,7 @@ namespace Izmi
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void CreatePrototype()
         {
-            if (FindFirstObjectByType<IzmiBootstrap>() != null)
+            if (FindAnyObjectByType<IzmiBootstrap>() != null)
             {
                 return;
             }
