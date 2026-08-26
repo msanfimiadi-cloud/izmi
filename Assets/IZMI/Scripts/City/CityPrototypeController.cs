@@ -10,6 +10,7 @@ namespace Izmi
         private GameObject globe;
         private GameObject starfield;
         private Camera worldCamera;
+        private CityResponseVisualizer responseVisualizer;
         private Vector3 globeCameraPosition;
         private Quaternion globeCameraRotation;
         private bool transitioning;
@@ -27,6 +28,7 @@ namespace Izmi
         {
             cityRoot = ProceduralCityBuilder.Build();
             InfectionSystem = cityRoot.GetComponent<PrototypeInfectionSystem>();
+            responseVisualizer = cityRoot.AddComponent<CityResponseVisualizer>();
             cityRoot.SetActive(false);
         }
 
@@ -132,6 +134,7 @@ namespace Izmi
             if (outbreak != null && outbreak.SelectedRegion != null)
             {
                 ActiveRegionName = outbreak.SelectedRegion.Name;
+                responseVisualizer.Apply(outbreak);
             }
 
             if (worldCamera == null || globe == null)
