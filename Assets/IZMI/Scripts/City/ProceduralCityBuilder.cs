@@ -267,6 +267,10 @@ namespace Izmi
                     : new Vector3(0.34f, 0.18f, 0.38f);
                 CreateCube("Car Cabin", vehicleRoot.transform, new Vector3(0f, 0.2f, 0f),
                     cabinScale, windowMaterial);
+                CreateCube("Vehicle Headlights", vehicleRoot.transform, new Vector3(-0.13f, 0.02f, 0.43f),
+                    new Vector3(0.09f, 0.09f, 0.035f), laneMaterial);
+                CreateCube("Vehicle Headlights", vehicleRoot.transform, new Vector3(0.13f, 0.02f, 0.43f),
+                    new Vector3(0.09f, 0.09f, 0.035f), laneMaterial);
                 vehicleRoot.AddComponent<CityVehicle>().Configure(
                     start, end, Random.Range(2.2f, 4.8f), Random.value);
             }
