@@ -11,6 +11,8 @@ namespace Izmi
         private GameObject starfield;
         private Camera worldCamera;
         private CityResponseVisualizer responseVisualizer;
+        private GlobalOutbreakSystem globalOutbreak;
+        private GlobalOutbreakSystem.RegionState activeRegion;
         private Vector3 globeCameraPosition;
         private Quaternion globeCameraRotation;
         private bool transitioning;
@@ -59,6 +61,7 @@ namespace Izmi
             }
 
             InfectionSystem.DeployQuarantine(24f);
+            globalOutbreak?.ApplyCityQuarantine(activeRegion);
             SetMessage("КАРАНТИН ВВЕДЁН • РАСПРОСТРАНЕНИЕ ЗАМЕДЛЕНО");
             return true;
         }
@@ -77,6 +80,7 @@ namespace Izmi
             }
 
             var treated = InfectionSystem.TreatInfected(4);
+            globalOutbreak?.ApplyCityTreatment(activeRegion, treated);
             SetMessage("ВЫЛЕЧЕНО: " + treated);
             return true;
         }
@@ -95,6 +99,7 @@ namespace Izmi
             }
 
             var evacuated = InfectionSystem.EvacuateHealthy(6);
+            globalOutbreak?.ApplyCityEvacuation(activeRegion, evacuated);
             SetMessage("ЭВАКУИРОВАНО: " + evacuated);
             return true;
         }
@@ -130,11 +135,15 @@ namespace Izmi
             }
 
             ResolveWorldObjects();
-            var outbreak = GetComponent<GlobalOutbreakSystem>();
-            if (outbreak != null && outbreak.SelectedRegion != null)
+            globalOutbreak = GetComponent<GlobalOutbreakSystem>();
+            if (globalOutbreak != null && globalOutbreak.SelectedRegion != null)
             {
-                ActiveRegionName = outbreak.SelectedRegion.Name;
-                responseVisualizer.Apply(outbreak);
+                activeRegion = globalOutbreak.SelectedRegion;
+                ActiveRegionName = activeRegion.Name;
+                InfectionSystem.ConfigureRegionalSeverity(
+                    activeRegion.Infected,
+                    activeRegion.Population);
+                responseVisualizer.Apply(globalOutbreak);
             }
 
             if (worldCamera == null || globe == null)
@@ -150,6 +159,13 @@ namespace Izmi
             if (!IsCityView || transitioning)
             {
                 return;
+            }
+
+            if (globalOutbreak != null && activeRegion != null && InfectionSystem != null)
+            {
+                globalOutbreak.ReportCityOutbreak(
+                    activeRegion,
+                    InfectionSystem.InfectionRatio);
             }
 
             StartCoroutine(TransitionToGlobe());
