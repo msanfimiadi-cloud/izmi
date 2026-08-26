@@ -198,13 +198,62 @@ namespace Izmi
                 (cityPrototype == null || !cityPrototype.IsCityView))
             {
                 DrawGlobalStrategyPanel(scale);
-                if (globalOutbreak.HasCrisisEvent)
+                if (globalOutbreak.HasOfflineReport)
+                {
+                    DrawOfflineReportPanel(scale);
+                }
+                else if (globalOutbreak.HasCrisisEvent)
                 {
                     DrawCrisisEventPanel(scale);
                 }
             }
 
             GUI.matrix = previousMatrix;
+        }
+
+        private void DrawOfflineReportPanel(float scale)
+        {
+            var virtualWidth = Screen.width / scale;
+            var virtualHeight = Screen.height / scale;
+            var width = Mathf.Min(560f, virtualWidth - 40f);
+            var x = (virtualWidth - width) * 0.5f;
+            var y = Mathf.Max(20f, virtualHeight - 268f);
+
+            GUILayout.BeginArea(new Rect(x, y, width, 238f), panelStyle);
+            GUILayout.Label("МИР ЖИЛ БЕЗ ВАС", titleStyle);
+            GUILayout.Space(5f);
+            GUILayout.Label(
+                "ПРОШЛО: " + FormatOfflineTime(globalOutbreak.OfflineElapsedGameMinutes),
+                bodyStyle);
+            GUILayout.Space(6f);
+            GUILayout.Label(
+                "НОВЫХ ЗАРАЖЕНИЙ: " + globalOutbreak.OfflineNewInfections.ToString("N0"),
+                eventTextStyle);
+            GUILayout.Label(
+                "НОВЫХ ЗАТРОНУТЫХ РЕГИОНОВ: " + globalOutbreak.OfflineNewRegions,
+                eventTextStyle);
+            GUILayout.FlexibleSpace();
+
+            if (GUILayout.Button("ПРИНЯТЬ ДОКЛАД", buttonStyle, GUILayout.Height(38f)))
+            {
+                globalOutbreak.DismissOfflineReport();
+            }
+            GUILayout.EndArea();
+        }
+
+        private static string FormatOfflineTime(double minutes)
+        {
+            if (minutes >= 1440d)
+            {
+                return (minutes / 1440d).ToString("0.0") + " ДН.";
+            }
+
+            if (minutes >= 60d)
+            {
+                return (minutes / 60d).ToString("0.0") + " Ч.";
+            }
+
+            return Mathf.Max(1, Mathf.RoundToInt((float)minutes)) + " МИН.";
         }
 
         private void DrawCrisisEventPanel(float scale)
