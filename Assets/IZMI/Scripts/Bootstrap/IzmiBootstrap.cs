@@ -24,7 +24,9 @@ namespace Izmi
             QualitySettings.vSyncCount = 0;
 
             CreateEnvironment();
+            CreateStarfield();
             var globe = CreateGlobe();
+            globe.AddComponent<PlanetIdleRotation>();
             CreateAtmosphere(globe.transform);
             CreateCloudLayer(globe.transform);
             CreateCityMarkers(globe.transform);
@@ -33,14 +35,81 @@ namespace Izmi
 
         private static void CreateEnvironment()
         {
-            RenderSettings.ambientLight = new Color(0.16f, 0.2f, 0.3f);
+            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+            RenderSettings.ambientLight = new Color(0.025f, 0.035f, 0.06f);
 
             var lightObject = new GameObject("Sun");
             var light = lightObject.AddComponent<Light>();
             light.type = LightType.Directional;
-            light.intensity = 1.35f;
-            light.color = new Color(1f, 0.95f, 0.85f);
-            lightObject.transform.rotation = Quaternion.Euler(28f, -34f, 0f);
+            light.intensity = 0.82f;
+            light.color = new Color(1f, 0.94f, 0.82f);
+            light.shadows = LightShadows.Soft;
+            lightObject.transform.rotation = Quaternion.Euler(18f, -38f, 6f);
+        }
+
+        private static void CreateStarfield()
+        {
+            var starObject = new GameObject("Starfield");
+            var particles = starObject.AddComponent<ParticleSystem>();
+
+            var main = particles.main;
+            main.loop = false;
+            main.playOnAwake = false;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.maxParticles = 700;
+            main.startLifetime = float.MaxValue;
+            main.startSpeed = 0f;
+            main.startSize = 0.035f;
+
+            var emission = particles.emission;
+            emission.enabled = false;
+
+            var shape = particles.shape;
+            shape.enabled = false;
+
+            var renderer = particles.GetComponent<ParticleSystemRenderer>();
+            renderer.renderMode = ParticleSystemRenderMode.Billboard;
+            renderer.sortMode = ParticleSystemSortMode.Distance;
+
+            var shader = Shader.Find("Particles/Standard Unlit");
+            if (shader == null)
+            {
+                shader = Shader.Find("Legacy Shaders/Particles/Alpha Blended");
+            }
+
+            if (shader != null)
+            {
+                var material = new Material(shader)
+                {
+                    name = "Starfield Material"
+                };
+                material.color = Color.white;
+                renderer.sharedMaterial = material;
+            }
+
+            const int starCount = 650;
+            var starParticles = new ParticleSystem.Particle[starCount];
+            var randomState = UnityEngine.Random.state;
+            UnityEngine.Random.InitState(17031996);
+
+            for (var index = 0; index < starCount; index++)
+            {
+                var direction = UnityEngine.Random.onUnitSphere;
+                var brightness = UnityEngine.Random.Range(0.45f, 1f);
+                var tint = UnityEngine.Random.value > 0.88f
+                    ? new Color(0.65f, 0.78f, 1f, brightness)
+                    : new Color(1f, 0.96f, 0.86f, brightness);
+
+                starParticles[index].position =
+                    direction * UnityEngine.Random.Range(28f, 48f);
+                starParticles[index].startColor = tint;
+                starParticles[index].startSize =
+                    UnityEngine.Random.Range(0.018f, 0.055f);
+                starParticles[index].remainingLifetime = float.MaxValue;
+            }
+
+            UnityEngine.Random.state = randomState;
+            particles.SetParticles(starParticles, starParticles.Length);
         }
 
         private static GameObject CreateGlobe()
@@ -53,8 +122,8 @@ namespace Izmi
             renderer.sharedMaterial = CreateMaterial(
                 "Earth Surface",
                 new Color(0.025f, 0.17f, 0.32f),
-                0.08f,
-                0.4f);
+                0f,
+                0.14f);
 
             var earthTexture = Resources.Load<Texture2D>("Earth/BlueMarble");
             if (earthTexture != null)
@@ -76,7 +145,7 @@ namespace Izmi
             atmosphere.transform.SetParent(globe, false);
             atmosphere.transform.localPosition = Vector3.zero;
             atmosphere.transform.localRotation = Quaternion.identity;
-            atmosphere.transform.localScale = Vector3.one * 1.018f;
+            atmosphere.transform.localScale = Vector3.one * 1.035f;
 
             var collider = atmosphere.GetComponent<Collider>();
             if (collider != null)
@@ -84,25 +153,25 @@ namespace Izmi
                 Destroy(collider);
             }
 
-            var material = CreateMaterial(
-                "Atmosphere Glow",
-                new Color(0.18f, 0.55f, 1f, 0.08f),
-                0f,
-                0.1f);
-
-            if (material.HasProperty("_Mode"))
+            var shader = Shader.Find("IZMI/Atmosphere");
+            if (shader != null)
             {
-                material.SetFloat("_Mode", 3f);
-                material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-                material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-                material.SetInt("_ZWrite", 0);
-                material.DisableKeyword("_ALPHATEST_ON");
-                material.EnableKeyword("_ALPHABLEND_ON");
-                material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-                material.renderQueue = 3000;
+                var material = new Material(shader)
+                {
+                    name = "Atmosphere Glow"
+                };
+                material.SetColor("_Color", new Color(0.12f, 0.5f, 1f, 0.72f));
+                material.SetFloat("_Power", 2.6f);
+                atmosphere.GetComponent<Renderer>().sharedMaterial = material;
             }
-
-            atmosphere.GetComponent<Renderer>().sharedMaterial = material;
+            else
+            {
+                atmosphere.GetComponent<Renderer>().sharedMaterial = CreateMaterial(
+                    "Atmosphere Fallback",
+                    new Color(0.15f, 0.4f, 0.8f, 0.08f),
+                    0f,
+                    0f);
+            }
         }
 
         private static void CreateCloudLayer(Transform globe)
@@ -122,7 +191,7 @@ namespace Izmi
 
             var material = CreateMaterial(
                 "Cloud Layer",
-                new Color(1f, 1f, 1f, 0.34f),
+                new Color(1f, 1f, 1f, 0.48f),
                 0f,
                 0.15f);
 
@@ -164,7 +233,7 @@ namespace Izmi
                     var broad = Mathf.PerlinNoise(u * 5.8f + 1.7f, v * 4.2f + 8.3f);
                     var detail = Mathf.PerlinNoise(u * 15.4f + 4.1f, v * 11.8f + 2.6f);
                     var noise = broad * 0.72f + detail * 0.28f;
-                    var alpha = Mathf.SmoothStep(0.54f, 0.72f, noise) * 0.55f;
+                    var alpha = Mathf.SmoothStep(0.49f, 0.68f, noise) * 0.68f;
                     var byteAlpha = (byte)Mathf.RoundToInt(alpha * 255f);
                     pixels[y * width + x] = new Color32(244, 249, 255, byteAlpha);
                 }
@@ -202,9 +271,17 @@ namespace Izmi
                 Mathf.Cos(lat) * Mathf.Sin(lon));
 
             marker.transform.localPosition = localDirection * 0.505f;
-            marker.transform.localScale = Vector3.one * 0.018f;
-            marker.GetComponent<Renderer>().sharedMaterial =
-                CreateMaterial(markerName, color, 0f, 0.35f);
+            marker.transform.localScale = Vector3.one * 0.014f;
+
+            var markerMaterial = CreateMaterial(markerName, color, 0f, 0.25f);
+            if (markerMaterial.HasProperty("_EmissionColor"))
+            {
+                markerMaterial.EnableKeyword("_EMISSION");
+                markerMaterial.SetColor("_EmissionColor", color * 1.8f);
+            }
+
+            marker.GetComponent<Renderer>().sharedMaterial = markerMaterial;
+            marker.AddComponent<MarkerPulse>();
         }
 
         private static void CreateCamera(Transform globe)
@@ -214,7 +291,7 @@ namespace Izmi
 
             var camera = cameraObject.AddComponent<Camera>();
             camera.clearFlags = CameraClearFlags.SolidColor;
-            camera.backgroundColor = new Color(0.005f, 0.008f, 0.018f);
+            camera.backgroundColor = new Color(0.001f, 0.002f, 0.008f);
             camera.fieldOfView = 42f;
             camera.nearClipPlane = 0.05f;
             camera.farClipPlane = 500f;
