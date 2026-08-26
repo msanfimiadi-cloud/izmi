@@ -14,7 +14,7 @@ Shader "IZMI/Atmosphere"
             "RenderType" = "Transparent"
         }
 
-        Cull Front
+        Cull Back
         ZWrite Off
         Blend SrcAlpha One
 
