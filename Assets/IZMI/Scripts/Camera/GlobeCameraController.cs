@@ -18,6 +18,7 @@ namespace Izmi
         private Vector2 previousPointer;
         private float previousPinchDistance;
         private bool pointerDragging;
+        private CityPrototypeController cityPrototype;
 
         public void Configure(Transform globeTransform, float minDistance, float maxDistance)
         {
@@ -25,6 +26,7 @@ namespace Izmi
             minimumDistance = minDistance;
             maximumDistance = maxDistance;
             targetDistance = transform.position.magnitude;
+            cityPrototype = FindAnyObjectByType<CityPrototypeController>();
         }
 
         private void OnEnable()
@@ -40,6 +42,11 @@ namespace Izmi
         private void Update()
         {
             if (globe == null)
+            {
+                return;
+            }
+
+            if (cityPrototype != null && cityPrototype.IsCityView)
             {
                 return;
             }
@@ -80,6 +87,11 @@ namespace Izmi
             if (Mathf.Abs(wheel) > 0.01f)
             {
                 targetDistance -= wheel * zoomSensitivity;
+
+                if (wheel > 0f && targetDistance <= minimumDistance + 0.08f)
+                {
+                    cityPrototype?.EnterCity();
+                }
             }
         }
 
@@ -101,6 +113,11 @@ namespace Izmi
                 if (previousPinchDistance > 0f)
                 {
                     targetDistance -= (currentDistance - previousPinchDistance) * zoomSensitivity;
+
+                    if (targetDistance <= minimumDistance + 0.08f)
+                    {
+                        cityPrototype?.EnterCity();
+                    }
                 }
 
                 previousPinchDistance = currentDistance;
