@@ -26,6 +26,7 @@ namespace Izmi
             CreateEnvironment();
             var globe = CreateGlobe();
             CreateAtmosphere(globe.transform);
+            CreateCloudLayer(globe.transform);
             CreateCityMarkers(globe.transform);
             CreateCamera(globe.transform);
         }
@@ -102,6 +103,76 @@ namespace Izmi
             }
 
             atmosphere.GetComponent<Renderer>().sharedMaterial = material;
+        }
+
+        private static void CreateCloudLayer(Transform globe)
+        {
+            var clouds = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            clouds.name = "Moving Clouds";
+            clouds.transform.SetParent(globe, false);
+            clouds.transform.localPosition = Vector3.zero;
+            clouds.transform.localRotation = Quaternion.identity;
+            clouds.transform.localScale = Vector3.one * 1.009f;
+
+            var collider = clouds.GetComponent<Collider>();
+            if (collider != null)
+            {
+                Destroy(collider);
+            }
+
+            var material = CreateMaterial(
+                "Cloud Layer",
+                new Color(1f, 1f, 1f, 0.34f),
+                0f,
+                0.15f);
+
+            if (material.HasProperty("_Mode"))
+            {
+                material.SetFloat("_Mode", 3f);
+                material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                material.SetInt("_ZWrite", 0);
+                material.DisableKeyword("_ALPHATEST_ON");
+                material.EnableKeyword("_ALPHABLEND_ON");
+                material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                material.renderQueue = 2990;
+            }
+
+            material.mainTexture = CreateProceduralCloudTexture();
+            clouds.GetComponent<Renderer>().sharedMaterial = material;
+            clouds.AddComponent<CloudLayerMotion>();
+        }
+
+        private static Texture2D CreateProceduralCloudTexture()
+        {
+            const int width = 512;
+            const int height = 256;
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, true)
+            {
+                name = "Procedural Global Clouds",
+                wrapMode = TextureWrapMode.Repeat,
+                filterMode = FilterMode.Bilinear
+            };
+
+            var pixels = new Color32[width * height];
+            for (var y = 0; y < height; y++)
+            {
+                for (var x = 0; x < width; x++)
+                {
+                    var u = x / (float)width;
+                    var v = y / (float)height;
+                    var broad = Mathf.PerlinNoise(u * 5.8f + 1.7f, v * 4.2f + 8.3f);
+                    var detail = Mathf.PerlinNoise(u * 15.4f + 4.1f, v * 11.8f + 2.6f);
+                    var noise = broad * 0.72f + detail * 0.28f;
+                    var alpha = Mathf.SmoothStep(0.54f, 0.72f, noise) * 0.55f;
+                    var byteAlpha = (byte)Mathf.RoundToInt(alpha * 255f);
+                    pixels[y * width + x] = new Color32(244, 249, 255, byteAlpha);
+                }
+            }
+
+            texture.SetPixels32(pixels);
+            texture.Apply(true, false);
+            return texture;
         }
 
         private static void CreateCityMarkers(Transform globe)
