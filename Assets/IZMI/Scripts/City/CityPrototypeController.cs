@@ -31,6 +31,7 @@ namespace Izmi
             cityRoot = ProceduralCityBuilder.Build();
             InfectionSystem = cityRoot.GetComponent<PrototypeInfectionSystem>();
             responseVisualizer = cityRoot.AddComponent<CityResponseVisualizer>();
+            cityRoot.AddComponent<CityDayNightController>();
             cityRoot.SetActive(false);
         }
 
