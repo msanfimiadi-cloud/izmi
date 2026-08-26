@@ -77,6 +77,10 @@ namespace Izmi
         public int InfectedRegions => infectedRegions;
         public RegionState SelectedRegion { get; private set; }
         public int ResponsePoints => Mathf.FloorToInt(responsePoints);
+        public int DifficultyLevel => Mathf.Clamp(PlayerPrefs.GetInt("IZMI.World.Difficulty", 1), 0, 2);
+        public string DifficultyName => DifficultyLevel == 0
+            ? "ИСТОРИЯ"
+            : DifficultyLevel == 2 ? "ВЫМИРАНИЕ" : "КРИЗИС";
         public int WarReadiness => Mathf.RoundToInt(warReadiness);
         public int CureResearch => Mathf.RoundToInt(cureResearch);
         public int ShelterReadiness => Mathf.RoundToInt(shelterReadiness);
@@ -429,12 +433,14 @@ namespace Izmi
                 : 0d;
             var crisisPressure = Mathf.Clamp01((float)(globalRatio * 180d));
 
-            foodSupply -= InfectedRegions * 0.18f +
+            var difficultyPressure = DifficultyLevel == 0 ? 0.72f
+                : DifficultyLevel == 2 ? 1.42f : 1f;
+            foodSupply -= (InfectedRegions * 0.18f +
                 shelterReadiness * 0.006f +
-                safeSettlementCount * 0.16f;
-            medicalSupply -= InfectedRegions * 0.14f + crisisPressure * 1.8f;
-            security -= InfectedRegions * 0.1f + crisisPressure * 1.25f;
-            publicTrust -= InfectedRegions * 0.08f + crisisPressure * 1.4f;
+                safeSettlementCount * 0.16f) * difficultyPressure;
+            medicalSupply -= (InfectedRegions * 0.14f + crisisPressure * 1.8f) * difficultyPressure;
+            security -= (InfectedRegions * 0.1f + crisisPressure * 1.25f) * difficultyPressure;
+            publicTrust -= (InfectedRegions * 0.08f + crisisPressure * 1.4f) * difficultyPressure;
 
             if (foodSupply < 8f && protectedPopulation > 0L)
             {
@@ -920,7 +926,9 @@ namespace Izmi
                 protection = Mathf.Clamp01(protection);
 
                 var gameDays = deltaTime / 240d;
-                var dailyGrowth = 0.24d * (1d - protection) * saturation;
+                var difficultyGrowth = DifficultyLevel == 0 ? 0.72d
+                    : DifficultyLevel == 2 ? 1.48d : 1d;
+                var dailyGrowth = 0.24d * difficultyGrowth * (1d - protection) * saturation;
                 var newCases = region.Infected * (Math.Exp(dailyGrowth * gameDays) - 1d);
                 region.Infected = Math.Min(availablePopulation, region.Infected + Math.Max(0d, newCases));
 
@@ -1000,7 +1008,9 @@ namespace Izmi
                     (1f - warReadiness * 0.0065f) *
                     Mathf.Lerp(1.35f, 0.72f, publicTrust / 100f);
                 if (AreFlightsRestricted) borderControl *= 0.18f;
-                if (UnityEngine.Random.value < (0.08f + pressure * 0.32f) * borderControl)
+                var difficultySpread = DifficultyLevel == 0 ? 0.68f
+                    : DifficultyLevel == 2 ? 1.5f : 1f;
+                if (UnityEngine.Random.value < (0.08f + pressure * 0.32f) * borderControl * difficultySpread)
                 {
                     region.Infected = UnityEngine.Random.Range(8, 42);
                     AddNews("Первый подтверждённый случай зарегистрирован в регионе «" + RegionDisplayName(region.Name) + "».");
