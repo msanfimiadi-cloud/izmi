@@ -477,6 +477,7 @@ namespace Izmi
             DrawRationButton("АРМИИ", 2);
             DrawRationButton("ПОСЕЛЕНИЯМ", 3);
             GUILayout.EndHorizontal();
+            DrawRationButton("РАВНЫЕ ПАЙКИ", 0);
             GUILayout.Space(9f);
 
             if (GUILayout.Button("МОБИЛИЗАЦИЯ И ГРАНИЦЫ  •  25", buttonStyle, GUILayout.Height(36f)))
@@ -523,7 +524,8 @@ namespace Izmi
 
         private void DrawRationButton(string label, int doctrine)
         {
-            var selected = doctrine == 1 && globalOutbreak.RationDoctrine == "ПРИОРИТЕТ МИРНЫМ"
+            var selected = doctrine == 0 && globalOutbreak.RationDoctrine == "РАВНЫЕ ПАЙКИ"
+                || doctrine == 1 && globalOutbreak.RationDoctrine == "ПРИОРИТЕТ МИРНЫМ"
                 || doctrine == 2 && globalOutbreak.RationDoctrine == "ПРИОРИТЕТ АРМИИ"
                 || doctrine == 3 && globalOutbreak.RationDoctrine == "ПРИОРИТЕТ ПОСЕЛЕНИЯМ";
             if (GUILayout.Button(label, selected ? activeButtonStyle : buttonStyle, GUILayout.Height(42f)))
