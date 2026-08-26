@@ -30,6 +30,7 @@ namespace Izmi
             CreateCityBlocks(root.transform);
             CreateStreetFurniture(root.transform);
             CreateVehicles(root.transform);
+            CreateAircraft(root.transform);
             CreatePedestrians(root.transform);
             var infectionOrigin = CreateInfectionOrigin(root.transform);
             root.AddComponent<PrototypeInfectionSystem>().Configure(infectionOrigin);
@@ -269,6 +270,44 @@ namespace Izmi
                 vehicleRoot.AddComponent<CityVehicle>().Configure(
                     start, end, Random.Range(2.2f, 4.8f), Random.value);
             }
+        }
+
+        private static void CreateAircraft(Transform root)
+        {
+            for (var index = 0; index < 2; index++)
+            {
+                var aircraft = new GameObject("Emergency Helicopter");
+                aircraft.transform.SetParent(root, false);
+                var body = CreateCube("Helicopter Body", aircraft.transform, Vector3.zero,
+                    new Vector3(0.75f, 0.42f, 1.35f),
+                    index == 0 ? vehicleMaterials[1] : vehicleMaterials[2]);
+                CreateCube("Helicopter Cabin", aircraft.transform, new Vector3(0f, 0.18f, 0.42f),
+                    new Vector3(0.58f, 0.32f, 0.52f), windowMaterial);
+                CreateCube("Helicopter Tail", aircraft.transform, new Vector3(0f, 0.05f, -1.05f),
+                    new Vector3(0.18f, 0.18f, 1.15f), vehicleMaterials[3]);
+                var rotor = CreateCube("Main Rotor", aircraft.transform, new Vector3(0f, 0.5f, 0f),
+                    new Vector3(2.5f, 0.045f, 0.12f), roadMaterial).transform;
+
+                aircraft.AddComponent<CityAircraft>().Configure(
+                    Vector3.zero,
+                    12f + index * 3.5f,
+                    8f + index * 1.8f,
+                    0.22f + index * 0.035f,
+                    index * Mathf.PI,
+                    true,
+                    rotor);
+            }
+
+            var plane = new GameObject("Passing Aircraft");
+            plane.transform.SetParent(root, false);
+            CreateCube("Aircraft Body", plane.transform, Vector3.zero,
+                new Vector3(0.42f, 0.38f, 2.2f), vehicleMaterials[0]);
+            CreateCube("Aircraft Wings", plane.transform, new Vector3(0f, 0f, 0.15f),
+                new Vector3(3.1f, 0.08f, 0.6f), vehicleMaterials[0]);
+            CreateCube("Aircraft Tail", plane.transform, new Vector3(0f, 0.35f, -0.82f),
+                new Vector3(0.1f, 0.78f, 0.5f), vehicleMaterials[2]);
+            plane.AddComponent<CityAircraft>().Configure(
+                Vector3.zero, 23f, 13f, 0.12f, 1.2f, false, null);
         }
 
         private static void CreatePedestrians(Transform root)
