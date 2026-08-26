@@ -342,7 +342,7 @@ namespace Izmi
             var x = wideLayout ? virtualWidth - 388f : 28f;
             var y = wideLayout ? 26f : 350f;
 
-            GUILayout.BeginArea(new Rect(x, y, 360f, 506f), panelStyle);
+            GUILayout.BeginArea(new Rect(x, y, 360f, 552f), panelStyle);
             GUILayout.Label("МЕЖДУНАРОДНЫЙ КРИЗИСНЫЙ СОВЕТ", titleStyle);
             GUILayout.Space(5f);
             GUILayout.Label(
