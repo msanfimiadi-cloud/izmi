@@ -96,6 +96,8 @@ namespace Izmi
                     case 0: return "ПЕРВЫЙ ПОДТВЕРЖДЁННЫЙ ОЧАГ";
                     case 1: return "ЗАРАЖЕНИЕ В МЕЖДУНАРОДНОМ АЭРОПОРТУ";
                     case 2: return "МИЛЛИОНЫ ЛЮДЕЙ ПОКИДАЮТ ГОРОДА";
+                    case 3: return "ВИРУС ОБНАРУЖЕН В ВОДОСНАБЖЕНИИ";
+                    case 4: return "ЗАРАЖЕНИЕ ПЕРЕШЛО НА ЖИВОТНЫХ";
                     default: return string.Empty;
                 }
             }
@@ -109,6 +111,8 @@ namespace Izmi
                     case 0: return "Неизвестная инфекция передаётся людям. Мир ждёт вашего первого приказа.";
                     case 1: return "Самолёты уже разлетелись по миру. Запасы еды и медикаментов зависят от открытых границ.";
                     case 2: return "Дороги переполнены. Военные, врачи и гражданские требуют разных решений.";
+                    case 3: return "Даже после лечения людей анализы воды остаются положительными. Очаг может возникнуть снова.";
+                    case 4: return "Домашние и дикие животные переносят инфекцию между безопасными зонами.";
                     default: return string.Empty;
                 }
             }
@@ -291,6 +295,14 @@ namespace Izmi
                     return choice == 0 ? "ПЕРЕДАТЬ КОНТРОЛЬ ВОЕННЫМ"
                         : choice == 1 ? "МАССОВОЕ ТЕСТИРОВАНИЕ"
                         : "СТРОИТЬ АВТОНОМНЫЕ ПОСЕЛЕНИЯ";
+                case 3:
+                    return choice == 0 ? "ОЦЕПИТЬ ВОДОХРАНИЛИЩА"
+                        : choice == 1 ? "СОЗДАТЬ СИСТЕМУ ОЧИСТКИ"
+                        : "ПЕРЕСЕЛИТЬ ЛЮДЕЙ К СКВАЖИНАМ";
+                case 4:
+                    return choice == 0 ? "УНИЧТОЖИТЬ ЗАРАЖЁННЫЕ СТАИ"
+                        : choice == 1 ? "СОЗДАТЬ ВЕТЕРИНАРНУЮ ВАКЦИНУ"
+                        : "ИЗОЛИРОВАТЬ ЗАПОВЕДНЫЕ ЗОНЫ";
                 default:
                     return string.Empty;
             }
@@ -335,15 +347,34 @@ namespace Izmi
 
         private void CheckCrisisEvent()
         {
-            if (crisisEventVisible || crisisEventIndex >= 3)
+            if (crisisEventVisible || crisisEventIndex >= 5)
             {
                 return;
             }
 
-            var threshold = crisisEventIndex == 0
-                ? 1000L
-                : crisisEventIndex == 1 ? 100000L : 1000000L;
-            if (TotalInfected >= threshold)
+            var shouldShow = false;
+            if (crisisEventIndex == 0) shouldShow = TotalInfected >= 1000L;
+            else if (crisisEventIndex == 1) shouldShow = TotalInfected >= 100000L;
+            else if (crisisEventIndex == 2) shouldShow = TotalInfected >= 1000000L;
+            else
+            {
+                foreach (var region in regions)
+                {
+                    if (crisisEventIndex == 3 && region.WaterRisk >= 20f)
+                    {
+                        shouldShow = true;
+                        break;
+                    }
+
+                    if (crisisEventIndex == 4 && region.AnimalRisk >= 22f)
+                    {
+                        shouldShow = true;
+                        break;
+                    }
+                }
+            }
+
+            if (shouldShow)
             {
                 crisisEventVisible = true;
             }
