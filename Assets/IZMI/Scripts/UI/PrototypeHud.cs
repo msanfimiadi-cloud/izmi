@@ -196,6 +196,9 @@ namespace Izmi
             {
                 var infection = cityPrototype.InfectionSystem;
                 GUILayout.Label(
+                    "ГОРОД: " + cityPrototype.ActiveCityName,
+                    bodyStyle);
+                GUILayout.Label(
                     "РЕГИОН: " + LocalizeRegion(cityPrototype.ActiveRegionName),
                     titleStyle);
                 GUILayout.Space(3f);
