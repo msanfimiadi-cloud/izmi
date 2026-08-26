@@ -113,6 +113,12 @@ namespace Izmi
 
         private void RotateGlobe(Vector2 delta)
         {
+            var idleRotation = globe.GetComponent<PlanetIdleRotation>();
+            if (idleRotation != null)
+            {
+                idleRotation.NotifyInteraction();
+            }
+
             globe.Rotate(Vector3.up, -delta.x * dragSensitivity, Space.World);
             globe.Rotate(transform.right, delta.y * dragSensitivity, Space.World);
         }
