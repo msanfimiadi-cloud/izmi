@@ -25,7 +25,8 @@ namespace Izmi
             CreateBuildings(root.transform);
             CreateVehicles(root.transform);
             CreatePedestrians(root.transform);
-            CreateInfectionOrigin(root.transform);
+            var infectionOrigin = CreateInfectionOrigin(root.transform);
+            root.AddComponent<PrototypeInfectionSystem>().Configure(infectionOrigin);
 
             Random.state = randomState;
             return root;
@@ -184,7 +185,7 @@ namespace Izmi
             }
         }
 
-        private static void CreateInfectionOrigin(Transform root)
+        private static Transform CreateInfectionOrigin(Transform root)
         {
             var origin = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             origin.name = "First Infected";
@@ -193,6 +194,7 @@ namespace Izmi
             origin.transform.localScale = Vector3.one * 0.48f;
             origin.GetComponent<Renderer>().sharedMaterial = infectionMaterial;
             origin.AddComponent<MarkerPulse>();
+            return origin.transform;
         }
 
         private static GameObject CreateCube(
