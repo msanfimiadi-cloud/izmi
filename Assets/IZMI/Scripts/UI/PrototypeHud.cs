@@ -234,7 +234,7 @@ namespace Izmi
             var x = wideLayout ? virtualWidth - 388f : 28f;
             var y = wideLayout ? 26f : 350f;
 
-            GUILayout.BeginArea(new Rect(x, y, 360f, 358f), panelStyle);
+            GUILayout.BeginArea(new Rect(x, y, 360f, 506f), panelStyle);
             GUILayout.Label("МЕЖДУНАРОДНЫЙ КРИЗИСНЫЙ СОВЕТ", titleStyle);
             GUILayout.Space(5f);
             GUILayout.Label(
@@ -244,6 +244,13 @@ namespace Izmi
                 "РЕСУРС РЕАГИРОВАНИЯ: " + globalOutbreak.ResponsePoints + " / 100",
                 titleStyle);
             DrawCommandBar(globalOutbreak.ResponsePoints / 100f);
+            GUILayout.Space(7f);
+
+            GUILayout.Label("СОСТОЯНИЕ МИРА: " + globalOutbreak.WorldCondition, titleStyle);
+            DrawResourceRow("ЕДА", globalOutbreak.FoodSupply);
+            DrawResourceRow("МЕДИКАМЕНТЫ", globalOutbreak.MedicalSupply);
+            DrawResourceRow("БЕЗОПАСНОСТЬ", globalOutbreak.Security);
+            DrawResourceRow("ДОВЕРИЕ", globalOutbreak.PublicTrust);
             GUILayout.Space(7f);
 
             GUILayout.Label("ВОЕННАЯ ГОТОВНОСТЬ  " + globalOutbreak.WarReadiness + "%", titleStyle);
@@ -279,6 +286,12 @@ namespace Izmi
             GUI.DrawTexture(rect, panelTexture);
             var fill = new Rect(rect.x, rect.y, rect.width * Mathf.Clamp01(ratio), rect.height);
             GUI.DrawTexture(fill, activeTexture);
+        }
+
+        private void DrawResourceRow(string label, int value)
+        {
+            GUILayout.Label(label + "  " + value + "%", titleStyle);
+            DrawCommandBar(value / 100f);
         }
 
         private void DrawCommandBar(float ratio)
