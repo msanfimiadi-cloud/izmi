@@ -13,9 +13,14 @@ namespace Izmi
         private Vector3 globeCameraPosition;
         private Quaternion globeCameraRotation;
         private bool transitioning;
+        private float commandPoints = 70f;
+        private float messageTimer;
+        private string commandMessage = "ОЖИДАНИЕ РЕШЕНИЯ";
 
         public bool IsCityView { get; private set; }
         public PrototypeInfectionSystem InfectionSystem { get; private set; }
+        public int CommandPoints => Mathf.FloorToInt(commandPoints);
+        public string CommandMessage => commandMessage;
 
         private void Awake()
         {
@@ -26,11 +31,92 @@ namespace Izmi
 
         private void Update()
         {
+            commandPoints = Mathf.Min(100f, commandPoints + Time.deltaTime * 0.42f);
+            if (messageTimer > 0f)
+            {
+                messageTimer -= Time.deltaTime;
+                if (messageTimer <= 0f)
+                {
+                    commandMessage = "ОЖИДАНИЕ РЕШЕНИЯ";
+                }
+            }
+
             if (IsCityView && Keyboard.current != null &&
                 Keyboard.current.escapeKey.wasPressedThisFrame)
             {
                 ExitCity();
             }
+        }
+
+        public bool TryQuarantine()
+        {
+            if (!SpendPoints(30))
+            {
+                return false;
+            }
+
+            InfectionSystem.DeployQuarantine(24f);
+            SetMessage("КАРАНТИН ВВЕДЁН • РАСПРОСТРАНЕНИЕ ЗАМЕДЛЕНО");
+            return true;
+        }
+
+        public bool TryMedicalTeams()
+        {
+            if (InfectionSystem == null || InfectionSystem.InfectedCount <= 0)
+            {
+                SetMessage("МЕДБРИГАДАМ НЕКОГО ЛЕЧИТЬ");
+                return false;
+            }
+
+            if (!SpendPoints(40))
+            {
+                return false;
+            }
+
+            var treated = InfectionSystem.TreatInfected(4);
+            SetMessage("ВЫЛЕЧЕНО: " + treated);
+            return true;
+        }
+
+        public bool TryEvacuation()
+        {
+            if (InfectionSystem == null || InfectionSystem.HealthyCount <= 0)
+            {
+                SetMessage("НЕТ ДОСТУПНЫХ ДЛЯ ЭВАКУАЦИИ");
+                return false;
+            }
+
+            if (!SpendPoints(25))
+            {
+                return false;
+            }
+
+            var evacuated = InfectionSystem.EvacuateHealthy(6);
+            SetMessage("ЭВАКУИРОВАНО: " + evacuated);
+            return true;
+        }
+
+        private bool SpendPoints(int cost)
+        {
+            if (InfectionSystem == null)
+            {
+                return false;
+            }
+
+            if (commandPoints < cost)
+            {
+                SetMessage("НЕДОСТАТОЧНО РЕСУРСА КОМАНДОВАНИЯ");
+                return false;
+            }
+
+            commandPoints -= cost;
+            return true;
+        }
+
+        private void SetMessage(string message)
+        {
+            commandMessage = message;
+            messageTimer = 5f;
         }
 
         public void EnterCity()
