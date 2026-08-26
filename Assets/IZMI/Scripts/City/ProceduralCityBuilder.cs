@@ -28,7 +28,10 @@ namespace Izmi
         public static GameObject Build(string regionName = "First anomaly")
         {
             ConfigureRegion(regionName);
-            CreateMaterials();
+            if (groundMaterial == null)
+            {
+                CreateMaterials();
+            }
             var randomState = Random.state;
             Random.InitState(citySeed);
 
