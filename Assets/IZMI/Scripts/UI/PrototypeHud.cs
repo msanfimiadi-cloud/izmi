@@ -161,7 +161,60 @@ namespace Izmi
             }
 
             GUILayout.EndArea();
+
+            if (globalOutbreak != null &&
+                (cityPrototype == null || !cityPrototype.IsCityView))
+            {
+                DrawGlobalStrategyPanel(scale);
+            }
+
             GUI.matrix = previousMatrix;
+        }
+
+        private void DrawGlobalStrategyPanel(float scale)
+        {
+            var virtualWidth = Screen.width / scale;
+            var wideLayout = virtualWidth >= 900f;
+            var x = wideLayout ? virtualWidth - 388f : 28f;
+            var y = wideLayout ? 26f : 350f;
+
+            GUILayout.BeginArea(new Rect(x, y, 360f, 358f), panelStyle);
+            GUILayout.Label("МЕЖДУНАРОДНЫЙ КРИЗИСНЫЙ СОВЕТ", titleStyle);
+            GUILayout.Space(5f);
+            GUILayout.Label(
+                "СТРАТЕГИЯ: " + globalOutbreak.StrategicDirection,
+                titleStyle);
+            GUILayout.Label(
+                "РЕСУРС РЕАГИРОВАНИЯ: " + globalOutbreak.ResponsePoints + " / 100",
+                titleStyle);
+            DrawCommandBar(globalOutbreak.ResponsePoints / 100f);
+            GUILayout.Space(7f);
+
+            GUILayout.Label("ВОЕННАЯ ГОТОВНОСТЬ  " + globalOutbreak.WarReadiness + "%", titleStyle);
+            DrawCommandBar(globalOutbreak.WarReadiness / 100f);
+            GUILayout.Label("ИССЛЕДОВАНИЕ ЛЕЧЕНИЯ  " + globalOutbreak.CureResearch + "%", titleStyle);
+            DrawCommandBar(globalOutbreak.CureResearch / 100f);
+            GUILayout.Label("ГОТОВНОСТЬ УБЕЖИЩ  " + globalOutbreak.ShelterReadiness + "%", titleStyle);
+            DrawCommandBar(globalOutbreak.ShelterReadiness / 100f);
+            GUILayout.Space(7f);
+
+            GUILayout.Label(globalOutbreak.ResponseMessage, titleStyle);
+            GUILayout.Space(6f);
+
+            if (GUILayout.Button("МОБИЛИЗАЦИЯ И ГРАНИЦЫ  •  25", buttonStyle, GUILayout.Height(36f)))
+            {
+                globalOutbreak.InvestInDefense();
+            }
+            if (GUILayout.Button("ФИНАНСИРОВАТЬ ЛЕЧЕНИЕ  •  35", buttonStyle, GUILayout.Height(36f)))
+            {
+                globalOutbreak.FundCureResearch();
+            }
+            if (GUILayout.Button("СТРОИТЬ УБЕЖИЩА  •  30", buttonStyle, GUILayout.Height(36f)))
+            {
+                globalOutbreak.BuildShelters();
+            }
+
+            GUILayout.EndArea();
         }
 
         private void DrawInfectionBar(float ratio)
