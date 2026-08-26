@@ -58,6 +58,8 @@ namespace Izmi
         private float medicalSupply = 74f;
         private float security = 68f;
         private float publicTrust = 76f;
+        private int safeSettlementCount;
+        private long protectedPopulation;
 
         public IReadOnlyList<RegionState> Regions => regions;
         public long TotalPopulation { get; private set; }
@@ -77,6 +79,19 @@ namespace Izmi
         public int MedicalSupply => Mathf.RoundToInt(medicalSupply);
         public int Security => Mathf.RoundToInt(security);
         public int PublicTrust => Mathf.RoundToInt(publicTrust);
+        public int SafeSettlementCount => safeSettlementCount;
+        public long ProtectedPopulation => protectedPopulation;
+        public long LivingPopulation => Math.Max(0L, TotalPopulation - TotalDead);
+        public string HumanityStatus
+        {
+            get
+            {
+                if (LivingPopulation <= 100L) return "ПОСЛЕДНИЕ 100";
+                if (LivingPopulation <= 1000000L) return "ОСТАТКИ ЧЕЛОВЕЧЕСТВА";
+                if (TotalPopulation > 0L && LivingPopulation < TotalPopulation / 2L) return "ГЛОБАЛЬНЫЙ КОЛЛАПС";
+                return "ЦИВИЛИЗАЦИЯ ДЕРЖИТСЯ";
+            }
+        }
         public string WorldCondition
         {
             get
@@ -250,10 +265,18 @@ namespace Izmi
                 : 0d;
             var crisisPressure = Mathf.Clamp01((float)(globalRatio * 180d));
 
-            foodSupply -= InfectedRegions * 0.18f + shelterReadiness * 0.006f;
+            foodSupply -= InfectedRegions * 0.18f +
+                shelterReadiness * 0.006f +
+                safeSettlementCount * 0.16f;
             medicalSupply -= InfectedRegions * 0.14f + crisisPressure * 1.8f;
             security -= InfectedRegions * 0.1f + crisisPressure * 1.25f;
             publicTrust -= InfectedRegions * 0.08f + crisisPressure * 1.4f;
+
+            if (foodSupply < 8f && protectedPopulation > 0L)
+            {
+                protectedPopulation = Math.Max(0L, protectedPopulation - Math.Max(1000L, protectedPopulation / 40L));
+                publicTrust -= 1.5f;
+            }
 
             if (InfectedRegions <= 1)
             {
@@ -414,7 +437,11 @@ namespace Izmi
             security -= 3f;
             publicTrust = Mathf.Min(100f, publicTrust + 7f);
             shelterReadiness = Mathf.Min(100f, shelterReadiness + 12f);
-            SetResponseMessage("УБЕЖИЩА ПРИНИМАЮТ ЛЮДЕЙ");
+            safeSettlementCount++;
+            protectedPopulation = Math.Min(
+                LivingPopulation,
+                protectedPopulation + 150000L + safeSettlementCount * 25000L);
+            SetResponseMessage("НОВОЕ ПОСЕЛЕНИЕ ПРИНИМАЕТ ЛЮДЕЙ");
             SavePolicyState();
             return true;
         }
@@ -490,6 +517,10 @@ namespace Izmi
             medicalSupply = PlayerPrefs.GetFloat("IZMI.Resource.Medicine", 74f);
             security = PlayerPrefs.GetFloat("IZMI.Resource.Security", 68f);
             publicTrust = PlayerPrefs.GetFloat("IZMI.Resource.Trust", 76f);
+            safeSettlementCount = PlayerPrefs.GetInt("IZMI.Survival.Settlements", 0);
+            long.TryParse(
+                PlayerPrefs.GetString("IZMI.Survival.Protected", "0"),
+                out protectedPopulation);
             crisisEventIndex = PlayerPrefs.GetInt("IZMI.Events.Index", 0);
         }
 
@@ -503,6 +534,8 @@ namespace Izmi
             PlayerPrefs.SetFloat("IZMI.Resource.Medicine", medicalSupply);
             PlayerPrefs.SetFloat("IZMI.Resource.Security", security);
             PlayerPrefs.SetFloat("IZMI.Resource.Trust", publicTrust);
+            PlayerPrefs.SetInt("IZMI.Survival.Settlements", safeSettlementCount);
+            PlayerPrefs.SetString("IZMI.Survival.Protected", protectedPopulation.ToString());
             PlayerPrefs.Save();
         }
 
@@ -655,7 +688,13 @@ namespace Izmi
                 region.Infected = Math.Min(availablePopulation, region.Infected + Math.Max(0d, newCases));
 
                 var supplyCrisis = 1d + (100d - medicalSupply) / 45d;
-                var deaths = Math.Min(region.Infected, region.Infected * 0.0045d * supplyCrisis * gameDays);
+                var protectedShare = TotalPopulation > 0L
+                    ? Mathf.Clamp01((float)(protectedPopulation / (double)TotalPopulation))
+                    : 0f;
+                var settlementProtection = 1d - protectedShare * 0.72d;
+                var deaths = Math.Min(
+                    region.Infected,
+                    region.Infected * 0.0045d * supplyCrisis * settlementProtection * gameDays);
                 region.Infected -= deaths;
                 region.Dead = Math.Min(region.Population, region.Dead + deaths);
 
