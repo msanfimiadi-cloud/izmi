@@ -223,6 +223,49 @@ namespace Izmi
             CheckCrisisEvent();
         }
 
+        public void ApplyCityQuarantine(RegionState region)
+        {
+            if (region == null) return;
+            region.Infected = Math.Max(0d, region.Infected * 0.992d);
+            warReadiness = Mathf.Min(100f, warReadiness + 1f);
+            travelRestrictionTimer = Mathf.Max(travelRestrictionTimer, 8f);
+            SaveRegionalState();
+        }
+
+        public void ApplyCityTreatment(RegionState region, int treated)
+        {
+            if (region == null || treated <= 0) return;
+            var regionalTreated = Math.Max(treated * 500d, region.Infected * 0.003d);
+            regionalTreated = Math.Min(region.Infected, regionalTreated);
+            region.Infected -= regionalTreated;
+            region.Recovered = Math.Min(
+                region.Population - region.Dead,
+                region.Recovered + regionalTreated);
+            cureResearch = Mathf.Min(100f, cureResearch + 0.8f);
+            SaveRegionalState();
+        }
+
+        public void ApplyCityEvacuation(RegionState region, int evacuatedPeople)
+        {
+            if (region == null || evacuatedPeople <= 0) return;
+            var representedPeople = evacuatedPeople * 5000L;
+            protectedPopulation = Math.Min(
+                LivingPopulation,
+                protectedPopulation + representedPeople);
+            shelterReadiness = Mathf.Min(100f, shelterReadiness + 0.7f);
+            foodSupply = Mathf.Max(0f, foodSupply - 0.8f);
+            SaveRegionalState();
+        }
+
+        public void ReportCityOutbreak(RegionState region, float sampleInfectionRatio)
+        {
+            if (region == null) return;
+            var projectedMinimum = region.Population *
+                Mathf.Clamp01(sampleInfectionRatio) * 0.0001d;
+            region.Infected = Math.Max(region.Infected, projectedMinimum);
+            SaveRegionalState();
+        }
+
         public bool PurifySelectedWater()
         {
             if (SelectedRegion == null ||
