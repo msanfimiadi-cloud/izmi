@@ -10,7 +10,7 @@ namespace Izmi
         [SerializeField] private float gameMinutesPerRealSecond = 1f;
         [SerializeField] private int speedIndex = 1;
 
-        private DateTime currentDate = new(2026, 8, 26, 8, 0, 0);
+        private DateTime currentDate = new DateTime(2026, 8, 26, 8, 0, 0);
 
         public DateTime CurrentDate => currentDate;
         public float CurrentSpeed => SupportedSpeeds[speedIndex];
