@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -37,6 +38,7 @@ namespace Izmi
         private Material flightMaterial;
         private float spreadPulse;
         private int infectedRegions = 1;
+        private float autosaveTimer;
 
         public IReadOnlyList<RegionState> Regions => regions;
         public long TotalPopulation { get; private set; }
@@ -67,6 +69,7 @@ namespace Izmi
             CreateRoute(3, 6);
             CreateRoute(4, 5);
             CreateRoute(4, 7);
+            LoadRegionalState();
             SelectedRegion = regions.Count > 3 ? regions[3] : regions[0];
             RefreshTotals();
         }
@@ -93,6 +96,12 @@ namespace Izmi
             }
 
             UpdateFlights();
+            autosaveTimer += Time.unscaledDeltaTime;
+            if (autosaveTimer >= 5f)
+            {
+                autosaveTimer = 0f;
+                SaveRegionalState();
+            }
             RefreshVisuals();
             RefreshTotals();
         }
@@ -138,6 +147,76 @@ namespace Izmi
             {
                 SelectedRegion = nearest;
             }
+        }
+
+        private void LoadRegionalState()
+        {
+            var hasStoredWorld = false;
+            foreach (var region in regions)
+            {
+                var stored = PlayerPrefs.GetString("IZMI.Region." + region.Name, string.Empty);
+                if (double.TryParse(stored, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+                {
+                    region.Infected = Math.Max(0d, Math.Min(region.Population, value));
+                    hasStoredWorld = true;
+                }
+            }
+
+            if (!hasStoredWorld)
+            {
+                return;
+            }
+
+            var clock = GetComponent<SimulationClock>();
+            var offlineDays = clock != null ? clock.LastOfflineAdvanceMinutes / 1440d : 0d;
+            if (offlineDays <= 0d)
+            {
+                return;
+            }
+
+            foreach (var region in regions)
+            {
+                if (region.Infected > 0d)
+                {
+                    region.Infected = Math.Min(
+                        region.Population,
+                        region.Infected * Math.Exp(0.16d * offlineDays));
+                }
+            }
+
+            var imports = Mathf.Clamp(Mathf.FloorToInt((float)(offlineDays / 2d)), 0, 3);
+            for (var index = 0; index < regions.Count && imports > 0; index++)
+            {
+                if (regions[index].Infected < 1d)
+                {
+                    regions[index].Infected = 12d + index * 3d;
+                    imports--;
+                }
+            }
+        }
+
+        private void SaveRegionalState()
+        {
+            foreach (var region in regions)
+            {
+                PlayerPrefs.SetString(
+                    "IZMI.Region." + region.Name,
+                    region.Infected.ToString("R", CultureInfo.InvariantCulture));
+            }
+            PlayerPrefs.Save();
+        }
+
+        private void OnApplicationPause(bool paused)
+        {
+            if (paused)
+            {
+                SaveRegionalState();
+            }
+        }
+
+        private void OnApplicationQuit()
+        {
+            SaveRegionalState();
         }
 
         private void RegisterRegion(string regionName, long population, double infected)
