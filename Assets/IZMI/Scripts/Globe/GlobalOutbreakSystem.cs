@@ -16,6 +16,8 @@ namespace Izmi
             public double Infected;
             public double Dead;
             public double Recovered;
+            public float WaterRisk;
+            public float AnimalRisk;
             public Transform Marker;
             public Renderer MarkerRenderer;
             public Color BaseColor;
@@ -199,6 +201,41 @@ namespace Izmi
             RefreshVisuals();
             RefreshTotals();
             CheckCrisisEvent();
+        }
+
+        public bool PurifySelectedWater()
+        {
+            if (SelectedRegion == null ||
+                !HasResources(0f, 6f, 0f, 0f) ||
+                !SpendResponsePoints(20f))
+            {
+                return false;
+            }
+
+            medicalSupply -= 6f;
+            SelectedRegion.WaterRisk = Mathf.Max(0f, SelectedRegion.WaterRisk - 24f);
+            cureResearch = Mathf.Min(100f, cureResearch + 2f);
+            SetResponseMessage("ВОДОСНАБЖЕНИЕ РЕГИОНА ОЧИЩЕНО");
+            SaveRegionalState();
+            return true;
+        }
+
+        public bool ControlSelectedAnimals()
+        {
+            if (SelectedRegion == null ||
+                !HasResources(0f, 0f, 6f, 3f) ||
+                !SpendResponsePoints(20f))
+            {
+                return false;
+            }
+
+            security -= 6f;
+            publicTrust -= 3f;
+            SelectedRegion.AnimalRisk = Mathf.Max(0f, SelectedRegion.AnimalRisk - 24f);
+            shelterReadiness = Mathf.Min(100f, shelterReadiness + 2f);
+            SetResponseMessage("ВЕТЕРИНАРНЫЕ ГРУППЫ РАЗВЁРНУТЫ");
+            SaveRegionalState();
+            return true;
         }
 
         private void ApplyResourcePressure()
@@ -461,6 +498,9 @@ namespace Izmi
                 {
                     region.Recovered = Math.Max(0d, Math.Min(region.Population, recovered));
                 }
+
+                region.WaterRisk = PlayerPrefs.GetFloat(key + ".Water", 0f);
+                region.AnimalRisk = PlayerPrefs.GetFloat(key + ".Animals", 0f);
             }
 
             if (!hasStoredWorld)
@@ -510,6 +550,8 @@ namespace Izmi
                 PlayerPrefs.SetString(
                     key + ".Recovered",
                     region.Recovered.ToString("R", CultureInfo.InvariantCulture));
+                PlayerPrefs.SetFloat(key + ".Water", region.WaterRisk);
+                PlayerPrefs.SetFloat(key + ".Animals", region.AnimalRisk);
             }
             SavePolicyState();
             PlayerPrefs.Save();
@@ -590,6 +632,21 @@ namespace Izmi
                 var recovered = Math.Min(region.Infected, region.Infected * recoveryRate * gameDays);
                 region.Infected -= recovered;
                 region.Recovered = Math.Min(region.Population - region.Dead, region.Recovered + recovered);
+
+                var infectionPressure = Mathf.Clamp01((float)(region.Infected / 100000d));
+                if (region.Infected >= 100d)
+                {
+                    region.WaterRisk += (0.18f + infectionPressure * 3.2f) * (float)gameDays;
+                    region.AnimalRisk += (0.12f + infectionPressure * 2.4f) * (float)gameDays;
+                }
+                else
+                {
+                    region.WaterRisk -= 0.025f * (float)gameDays;
+                    region.AnimalRisk -= 0.012f * (float)gameDays;
+                }
+
+                region.WaterRisk = Mathf.Clamp(region.WaterRisk, 0f, 100f);
+                region.AnimalRisk = Mathf.Clamp(region.AnimalRisk, 0f, 100f);
             }
         }
 
@@ -597,6 +654,18 @@ namespace Izmi
         {
             foreach (var region in regions)
             {
+                if (region.Infected < 1d &&
+                    (region.WaterRisk >= 35f || region.AnimalRisk >= 35f))
+                {
+                    var reservoirRisk = Mathf.Max(region.WaterRisk, region.AnimalRisk) / 100f;
+                    if (UnityEngine.Random.value < reservoirRisk * 0.24f)
+                    {
+                        region.Infected = UnityEngine.Random.Range(5, 24);
+                        SetResponseMessage("ИНФЕКЦИЯ ВЕРНУЛАСЬ ИЗ ОКРУЖАЮЩЕЙ СРЕДЫ");
+                        return;
+                    }
+                }
+
                 if (region.Infected >= 1d)
                 {
                     continue;
