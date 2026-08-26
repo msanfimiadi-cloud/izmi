@@ -90,7 +90,7 @@ namespace Izmi
             var panelWidth = compactLayout ? safeArea.width - 20f : 360f;
             var panelHeight = compactLayout
                 ? safeArea.height - 74f
-                : cityPrototype != null && cityPrototype.IsCityView ? 390f : 468f;
+                : cityPrototype != null && cityPrototype.IsCityView ? 390f : 610f;
             var panelRect = compactLayout
                 ? new Rect(safeArea.x + 10f, safeArea.y + 64f, panelWidth, panelHeight)
                 : new Rect(28f, safeArea.y + 26f, panelWidth, panelHeight);
@@ -169,6 +169,20 @@ namespace Izmi
                         globalOutbreak.ControlSelectedAnimals();
                     }
                     GUILayout.EndHorizontal();
+                }
+
+                if (globalOutbreak.NewsFeed.Count > 0)
+                {
+                    GUILayout.Space(10f);
+                    GUILayout.Label("МИРОВАЯ ЛЕНТА", titleStyle);
+                    var visibleNews = compactLayout
+                        ? Mathf.Min(6, globalOutbreak.NewsFeed.Count)
+                        : Mathf.Min(3, globalOutbreak.NewsFeed.Count);
+                    for (var newsIndex = 0; newsIndex < visibleNews; newsIndex++)
+                    {
+                        GUILayout.Label(globalOutbreak.NewsFeed[newsIndex], eventTextStyle);
+                        GUILayout.Space(3f);
+                    }
                 }
                 GUILayout.Space(8f);
             }
