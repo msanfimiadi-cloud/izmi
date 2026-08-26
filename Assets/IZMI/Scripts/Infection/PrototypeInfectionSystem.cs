@@ -10,17 +10,22 @@ namespace Izmi
 
         private readonly List<CityPedestrian> civilians = new List<CityPedestrian>();
         private readonly HashSet<CityPedestrian> infected = new HashSet<CityPedestrian>();
+        private readonly HashSet<CityPedestrian> evacuated = new HashSet<CityPedestrian>();
         private Transform origin;
         private Material infectedMaterial;
         private float timer;
+        private float quarantineTimer;
         private int newlyInfectedLastWave;
 
         public int InfectedCount => infected.Count;
         public int PopulationCount => civilians.Count;
-        public int HealthyCount => Mathf.Max(0, PopulationCount - InfectedCount);
+        public int EvacuatedCount => evacuated.Count;
+        public int HealthyCount => Mathf.Max(0, PopulationCount - InfectedCount - EvacuatedCount);
         public int NewlyInfectedLastWave => newlyInfectedLastWave;
-        public float InfectionRatio => PopulationCount > 0
-            ? InfectedCount / (float)PopulationCount
+        public bool IsQuarantineActive => quarantineTimer > 0f;
+        public float QuarantineSeconds => Mathf.Max(0f, quarantineTimer);
+        public float InfectionRatio => Mathf.Max(1, PopulationCount - EvacuatedCount) > 0
+            ? InfectedCount / (float)Mathf.Max(1, PopulationCount - EvacuatedCount)
             : 0f;
 
         public string AlertLevel
@@ -37,6 +42,55 @@ namespace Izmi
         public void Configure(Transform infectionOrigin)
         {
             origin = infectionOrigin;
+        }
+
+        public void DeployQuarantine(float duration)
+        {
+            quarantineTimer = Mathf.Max(quarantineTimer, duration);
+        }
+
+        public int TreatInfected(int requestedCount)
+        {
+            var treated = 0;
+            var candidates = new List<CityPedestrian>(infected);
+            for (var index = candidates.Count - 1; index >= 0 && treated < requestedCount; index--)
+            {
+                var civilian = candidates[index];
+                if (civilian == null)
+                {
+                    infected.Remove(civilian);
+                    continue;
+                }
+
+                infected.Remove(civilian);
+                civilian.SetHealthy();
+                treated++;
+            }
+
+            return treated;
+        }
+
+        public int EvacuateHealthy(int requestedCount)
+        {
+            var moved = 0;
+            foreach (var civilian in civilians)
+            {
+                if (moved >= requestedCount)
+                {
+                    break;
+                }
+
+                if (civilian == null || infected.Contains(civilian) || evacuated.Contains(civilian))
+                {
+                    continue;
+                }
+
+                evacuated.Add(civilian);
+                civilian.gameObject.SetActive(false);
+                moved++;
+            }
+
+            return moved;
         }
 
         private void Start()
@@ -56,20 +110,25 @@ namespace Izmi
 
         private void Update()
         {
+            if (quarantineTimer > 0f)
+            {
+                quarantineTimer -= Time.deltaTime;
+            }
+
             if (infected.Count == 0 || Time.timeScale <= 0f)
             {
                 return;
             }
 
             timer += Time.deltaTime;
-            if (timer < infectionCheckInterval)
+            var interval = infectionCheckInterval * (IsQuarantineActive ? 3.5f : 1f);
+            if (timer < interval)
             {
                 return;
             }
 
             timer = 0f;
             var newlyInfected = new List<CityPedestrian>();
-
             foreach (var carrier in infected)
             {
                 if (carrier == null)
@@ -77,7 +136,8 @@ namespace Izmi
                     continue;
                 }
 
-                var victim = FindClosestHealthy(carrier.transform.position, infectionDistance);
+                var distance = infectionDistance * (IsQuarantineActive ? 0.62f : 1f);
+                var victim = FindClosestHealthy(carrier.transform.position, distance);
                 if (victim != null && !newlyInfected.Contains(victim))
                 {
                     newlyInfected.Add(victim);
@@ -95,10 +155,9 @@ namespace Izmi
         {
             CityPedestrian closest = null;
             var closestDistance = maxDistance;
-
             foreach (var civilian in civilians)
             {
-                if (civilian == null || infected.Contains(civilian))
+                if (civilian == null || infected.Contains(civilian) || evacuated.Contains(civilian))
                 {
                     continue;
                 }
@@ -110,13 +169,12 @@ namespace Izmi
                     closestDistance = distance;
                 }
             }
-
             return closest;
         }
 
         private void Infect(CityPedestrian civilian)
         {
-            if (civilian == null || !infected.Add(civilian))
+            if (civilian == null || evacuated.Contains(civilian) || !infected.Add(civilian))
             {
                 return;
             }
@@ -127,7 +185,9 @@ namespace Izmi
 
         private static Material CreateInfectedMaterial()
         {
-            var material = new Material(Shader.Find("Standard"))
+            var shader = Shader.Find("Standard");
+            if (shader == null) shader = Shader.Find("Universal Render Pipeline/Lit");
+            var material = new Material(shader)
             {
                 name = "Infected Civilian",
                 color = new Color(0.33f, 0.055f, 0.035f)
@@ -138,7 +198,6 @@ namespace Izmi
                 material.EnableKeyword("_EMISSION");
                 material.SetColor("_EmissionColor", new Color(0.28f, 0.012f, 0.003f));
             }
-
             return material;
         }
     }
