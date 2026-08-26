@@ -56,7 +56,7 @@ namespace Izmi
                 {
                     windows.Add(renderer);
                 }
-                else if (objectName.Contains("Lamp Glow"))
+                else if (objectName.Contains("Lamp Glow") || objectName.Contains("Headlights"))
                 {
                     streetLights.Add(renderer);
                 }
@@ -84,8 +84,6 @@ namespace Izmi
             var hour = (float)clock.CurrentDate.TimeOfDay.TotalHours;
             var solarAngle = (hour - 6f) / 24f * Mathf.PI * 2f;
             var daylight = Mathf.Clamp01(Mathf.Sin(solarAngle) * 1.35f + 0.08f);
-            var dusk = 1f - daylight;
-
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
             RenderSettings.ambientLight = Color.Lerp(NightAmbient, DayAmbient, daylight);
 
