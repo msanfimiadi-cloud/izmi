@@ -114,10 +114,12 @@ namespace Izmi
             float metallic,
             float smoothness)
         {
-            var shader = Shader.Find("Universal Render Pipeline/Lit");
+            // The prototype starts on Unity's built-in renderer so it can
+            // open reliably before the final URP assets are configured.
+            var shader = Shader.Find("Standard");
             if (shader == null)
             {
-                shader = Shader.Find("Standard");
+                shader = Shader.Find("Universal Render Pipeline/Lit");
             }
 
             var material = new Material(shader)
