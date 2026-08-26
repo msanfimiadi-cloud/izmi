@@ -422,10 +422,7 @@ namespace Izmi
         private void DrawGlobalStrategyPanel(Rect panelRect, bool compactLayout)
         {
             GUILayout.BeginArea(panelRect, panelStyle);
-            if (compactLayout)
-            {
-                mobileStrategyScroll = GUILayout.BeginScrollView(mobileStrategyScroll, false, true);
-            }
+            mobileStrategyScroll = GUILayout.BeginScrollView(mobileStrategyScroll, false, true);
             GUILayout.Label("МЕЖДУНАРОДНЫЙ КРИЗИСНЫЙ СОВЕТ", titleStyle);
             GUILayout.Space(5f);
             GUILayout.Label(
@@ -508,10 +505,7 @@ namespace Izmi
                 globalOutbreak.BuildShelters();
             }
 
-            if (compactLayout)
-            {
-                GUILayout.EndScrollView();
-            }
+            GUILayout.EndScrollView();
             GUILayout.EndArea();
         }
 
