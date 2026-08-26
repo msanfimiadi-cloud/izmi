@@ -47,6 +47,7 @@ namespace Izmi
             light.color = new Color(1f, 0.94f, 0.82f);
             light.shadows = LightShadows.Soft;
             lightObject.transform.rotation = Quaternion.Euler(18f, -38f, 6f);
+            lightObject.AddComponent<SunOrbit>();
         }
 
         private static void CreateStarfield()
