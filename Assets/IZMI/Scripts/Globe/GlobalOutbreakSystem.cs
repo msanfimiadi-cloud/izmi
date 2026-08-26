@@ -67,6 +67,8 @@ namespace Izmi
         private int offlineNewRegions;
         private int endingType;
         private bool endingReportVisible;
+        private int armamentDoctrine;
+        private int rationDoctrine;
 
         public IReadOnlyList<RegionState> Regions => regions;
         public IReadOnlyList<string> NewsFeed => newsFeed;
@@ -85,6 +87,13 @@ namespace Izmi
         public int CureResearch => Mathf.RoundToInt(cureResearch);
         public int ShelterReadiness => Mathf.RoundToInt(shelterReadiness);
         public string ResponseMessage => responseMessage;
+        public string ArmamentDoctrine => armamentDoctrine == 1
+            ? "ВООРУЖАТЬ ГРАЖДАНСКИХ"
+            : armamentDoctrine == 2 ? "ОРУЖИЕ ТОЛЬКО ВОЕННЫМ" : "НЕ ВЫБРАНА";
+        public string RationDoctrine => rationDoctrine == 1
+            ? "ПРИОРИТЕТ МИРНЫМ"
+            : rationDoctrine == 2 ? "ПРИОРИТЕТ АРМИИ"
+            : rationDoctrine == 3 ? "ПРИОРИТЕТ ПОСЕЛЕНИЯМ" : "РАВНЫЕ ПАЙКИ";
         public bool AreFlightsRestricted => travelRestrictionTimer > 0f;
         public bool HasCrisisEvent => crisisEventVisible;
         public int FoodSupply => Mathf.RoundToInt(foodSupply);
@@ -435,12 +444,34 @@ namespace Izmi
 
             var difficultyPressure = DifficultyLevel == 0 ? 0.72f
                 : DifficultyLevel == 2 ? 1.42f : 1f;
+            var foodDoctrinePressure = rationDoctrine == 3 ? 1.12f
+                : rationDoctrine == 2 ? 1.06f
+                : rationDoctrine == 1 ? 1.03f : 1f;
             foodSupply -= (InfectedRegions * 0.18f +
                 shelterReadiness * 0.006f +
-                safeSettlementCount * 0.16f) * difficultyPressure;
+                safeSettlementCount * 0.16f) * difficultyPressure * foodDoctrinePressure;
             medicalSupply -= (InfectedRegions * 0.14f + crisisPressure * 1.8f) * difficultyPressure;
             security -= (InfectedRegions * 0.1f + crisisPressure * 1.25f) * difficultyPressure;
             publicTrust -= (InfectedRegions * 0.08f + crisisPressure * 1.4f) * difficultyPressure;
+
+            if (armamentDoctrine == 1)
+            {
+                security += 0.18f;
+                publicTrust -= 0.08f;
+            }
+            else if (armamentDoctrine == 2)
+            {
+                security += 0.25f;
+                publicTrust -= 0.14f;
+            }
+
+            if (rationDoctrine == 1) publicTrust += 0.28f;
+            else if (rationDoctrine == 2) security += 0.3f;
+            else if (rationDoctrine == 3 && protectedPopulation > 0L)
+            {
+                protectedPopulation = Math.Min(LivingPopulation, protectedPopulation + 2500L);
+                shelterReadiness = Mathf.Min(100f, shelterReadiness + 0.08f);
+            }
 
             if (foodSupply < 8f && protectedPopulation > 0L)
             {
@@ -573,6 +604,51 @@ namespace Izmi
             {
                 crisisEventVisible = true;
             }
+        }
+
+        public bool SetArmamentDoctrine(int doctrine)
+        {
+            if (doctrine < 1 || doctrine > 2 || armamentDoctrine == doctrine)
+            {
+                return false;
+            }
+            if (!SpendResponsePoints(18f)) return false;
+
+            armamentDoctrine = doctrine;
+            if (doctrine == 1)
+            {
+                security = Mathf.Min(100f, security + 5f);
+                publicTrust = Mathf.Max(0f, publicTrust - 4f);
+                shelterReadiness = Mathf.Min(100f, shelterReadiness + 3f);
+                SetResponseMessage("ГРАЖДАНСКИМ ВЫДАНО ОРУЖИЕ");
+                AddNews("Правительства разрешили вооружать гражданское население.");
+            }
+            else
+            {
+                security = Mathf.Min(100f, security + 8f);
+                publicTrust = Mathf.Max(0f, publicTrust - 6f);
+                warReadiness = Mathf.Min(100f, warReadiness + 5f);
+                SetResponseMessage("ОРУЖИЕ ОСТАЁТСЯ ПОД КОНТРОЛЕМ АРМИИ");
+                AddNews("Оружие и боеприпасы переданы исключительно военным.");
+            }
+            SavePolicyState();
+            return true;
+        }
+
+        public bool SetRationDoctrine(int doctrine)
+        {
+            if (doctrine < 0 || doctrine > 3 || rationDoctrine == doctrine)
+            {
+                return false;
+            }
+            if (!SpendResponsePoints(12f)) return false;
+
+            rationDoctrine = doctrine;
+            SetResponseMessage("ПОРЯДОК РАСПРЕДЕЛЕНИЯ ПРОДОВОЛЬСТВИЯ ИЗМЕНЁН");
+            AddNews("Совет изменил порядок распределения продовольствия: " +
+                RationDoctrine.ToLowerInvariant() + ".");
+            SavePolicyState();
+            return true;
         }
 
         public bool InvestInDefense()
@@ -742,6 +818,8 @@ namespace Izmi
             endingType = PlayerPrefs.GetInt("IZMI.Ending.Type", 0);
             endingReportVisible =
                 endingType != 0 && PlayerPrefs.GetInt("IZMI.Ending.Acknowledged", 0) == 0;
+            armamentDoctrine = PlayerPrefs.GetInt("IZMI.Policy.Armament", 0);
+            rationDoctrine = PlayerPrefs.GetInt("IZMI.Policy.Rations", 0);
         }
 
         private void SavePolicyState()
@@ -755,6 +833,8 @@ namespace Izmi
             PlayerPrefs.SetFloat("IZMI.Resource.Security", security);
             PlayerPrefs.SetFloat("IZMI.Resource.Trust", publicTrust);
             PlayerPrefs.SetInt("IZMI.Survival.Settlements", safeSettlementCount);
+            PlayerPrefs.SetInt("IZMI.Policy.Armament", armamentDoctrine);
+            PlayerPrefs.SetInt("IZMI.Policy.Rations", rationDoctrine);
             PlayerPrefs.SetString("IZMI.Survival.Protected", protectedPopulation.ToString());
             PlayerPrefs.Save();
         }
