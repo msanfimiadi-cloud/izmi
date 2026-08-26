@@ -25,6 +25,7 @@ namespace Izmi
 
             CreateEnvironment();
             var globe = CreateGlobe();
+            CreateAtmosphere(globe.transform);
             CreateCityMarkers(globe.transform);
             CreateCamera(globe.transform);
         }
@@ -49,12 +50,58 @@ namespace Izmi
 
             var renderer = globe.GetComponent<Renderer>();
             renderer.sharedMaterial = CreateMaterial(
-                "Earth Ocean",
+                "Earth Surface",
                 new Color(0.025f, 0.17f, 0.32f),
-                0.28f,
-                0.72f);
+                0.08f,
+                0.4f);
+
+            var earthTexture = Resources.Load<Texture2D>("Earth/BlueMarble");
+            if (earthTexture != null)
+            {
+                earthTexture.wrapMode = TextureWrapMode.Repeat;
+                earthTexture.filterMode = FilterMode.Trilinear;
+                renderer.sharedMaterial.mainTexture = earthTexture;
+                renderer.sharedMaterial.color = Color.white;
+                globe.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
+            }
 
             return globe;
+        }
+
+        private static void CreateAtmosphere(Transform globe)
+        {
+            var atmosphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            atmosphere.name = "Atmosphere";
+            atmosphere.transform.SetParent(globe, false);
+            atmosphere.transform.localPosition = Vector3.zero;
+            atmosphere.transform.localRotation = Quaternion.identity;
+            atmosphere.transform.localScale = Vector3.one * 1.018f;
+
+            var collider = atmosphere.GetComponent<Collider>();
+            if (collider != null)
+            {
+                Destroy(collider);
+            }
+
+            var material = CreateMaterial(
+                "Atmosphere Glow",
+                new Color(0.18f, 0.55f, 1f, 0.08f),
+                0f,
+                0.1f);
+
+            if (material.HasProperty("_Mode"))
+            {
+                material.SetFloat("_Mode", 3f);
+                material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                material.SetInt("_ZWrite", 0);
+                material.DisableKeyword("_ALPHATEST_ON");
+                material.EnableKeyword("_ALPHABLEND_ON");
+                material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                material.renderQueue = 3000;
+            }
+
+            atmosphere.GetComponent<Renderer>().sharedMaterial = material;
         }
 
         private static void CreateCityMarkers(Transform globe)
