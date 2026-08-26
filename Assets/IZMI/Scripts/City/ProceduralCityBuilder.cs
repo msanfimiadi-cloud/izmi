@@ -17,14 +17,22 @@ namespace Izmi
         private static Material[] vehicleMaterials;
         private static Material pedestrianMaterial;
         private static Material infectionMaterial;
+        private static int citySeed = 26082026;
+        private static int vehicleCount = 28;
+        private static int pedestrianCount = 44;
+        private static float towerHeightScale = 1f;
+        private static float parkChance = 0.15f;
+        private static float residentialChance = 0.32f;
+        private static string cityName = "Сингапур";
 
-        public static GameObject Build()
+        public static GameObject Build(string regionName = "First anomaly")
         {
+            ConfigureRegion(regionName);
             CreateMaterials();
             var randomState = Random.state;
-            Random.InitState(26082026);
+            Random.InitState(citySeed);
 
-            var root = new GameObject("Test City");
+            var root = new GameObject(cityName);
             CreateGround(root.transform);
             CreateRoadNetwork(root.transform);
             CreateCityBlocks(root.transform);
@@ -118,11 +126,11 @@ namespace Izmi
                         new Vector3(4.15f, 0.16f, 4.15f), sidewalkMaterial);
 
                     var districtRoll = Random.value;
-                    if (districtRoll < 0.15f)
+                    if (districtRoll < parkChance)
                     {
                         CreatePark(root, center);
                     }
-                    else if (districtRoll < 0.32f)
+                    else if (districtRoll < residentialChance)
                     {
                         CreateResidentialBlock(root, center);
                     }
@@ -136,7 +144,7 @@ namespace Izmi
 
         private static void CreateTower(Transform root, Vector3 center)
         {
-            var height = Random.Range(4.2f, 11.5f);
+            var height = Random.Range(4.2f, 11.5f) * towerHeightScale;
             var footprintX = Random.Range(2.5f, 3.45f);
             var footprintZ = Random.Range(2.5f, 3.45f);
             var material = buildingMaterials[Random.Range(0, buildingMaterials.Length)];
@@ -236,7 +244,7 @@ namespace Izmi
         private static void CreateVehicles(Transform root)
         {
             const float routeLength = 36f;
-            for (var index = 0; index < 28; index++)
+            for (var index = 0; index < vehicleCount; index++)
             {
                 var horizontal = index % 2 == 0;
                 var laneCoordinate = Random.Range(-3, 4) * 5.5f;
@@ -316,7 +324,7 @@ namespace Izmi
 
         private static void CreatePedestrians(Transform root)
         {
-            for (var index = 0; index < 44; index++)
+            for (var index = 0; index < pedestrianCount; index++)
             {
                 var pedestrian = GameObject.CreatePrimitive(PrimitiveType.Capsule);
                 pedestrian.name = "Civilian";
@@ -354,6 +362,91 @@ namespace Izmi
             cube.transform.localScale = scale;
             cube.GetComponent<Renderer>().sharedMaterial = material;
             return cube;
+        }
+
+        private static void ConfigureRegion(string regionName)
+        {
+            vehicleCount = 28;
+            pedestrianCount = 44;
+            towerHeightScale = 1f;
+            parkChance = 0.15f;
+            residentialChance = 0.32f;
+
+            switch (regionName)
+            {
+                case "Europe":
+                    cityName = "Берлин";
+                    citySeed = 104729;
+                    vehicleCount = 24;
+                    pedestrianCount = 52;
+                    towerHeightScale = 0.78f;
+                    parkChance = 0.24f;
+                    residentialChance = 0.52f;
+                    break;
+                case "Asia":
+                    cityName = "Токио";
+                    citySeed = 130363;
+                    vehicleCount = 38;
+                    pedestrianCount = 66;
+                    towerHeightScale = 1.35f;
+                    parkChance = 0.09f;
+                    residentialChance = 0.22f;
+                    break;
+                case "North America":
+                    cityName = "Нью-Йорк";
+                    citySeed = 155921;
+                    vehicleCount = 36;
+                    pedestrianCount = 58;
+                    towerHeightScale = 1.42f;
+                    parkChance = 0.12f;
+                    residentialChance = 0.22f;
+                    break;
+                case "Africa":
+                    cityName = "Найроби";
+                    citySeed = 196613;
+                    vehicleCount = 20;
+                    pedestrianCount = 48;
+                    towerHeightScale = 0.72f;
+                    parkChance = 0.18f;
+                    residentialChance = 0.48f;
+                    break;
+                case "South America":
+                    cityName = "Сан-Паулу";
+                    citySeed = 228017;
+                    vehicleCount = 31;
+                    pedestrianCount = 61;
+                    towerHeightScale = 1.05f;
+                    parkChance = 0.17f;
+                    residentialChance = 0.43f;
+                    break;
+                case "Australia":
+                    cityName = "Сидней";
+                    citySeed = 263167;
+                    vehicleCount = 22;
+                    pedestrianCount = 38;
+                    towerHeightScale = 0.92f;
+                    parkChance = 0.28f;
+                    residentialChance = 0.5f;
+                    break;
+                case "Middle East":
+                    cityName = "Дубай";
+                    citySeed = 299993;
+                    vehicleCount = 34;
+                    pedestrianCount = 40;
+                    towerHeightScale = 1.58f;
+                    parkChance = 0.07f;
+                    residentialChance = 0.2f;
+                    break;
+                default:
+                    cityName = "Сингапур";
+                    citySeed = 26082026;
+                    vehicleCount = 30;
+                    pedestrianCount = 56;
+                    towerHeightScale = 1.22f;
+                    parkChance = 0.14f;
+                    residentialChance = 0.28f;
+                    break;
+            }
         }
 
         private static void CreateMaterials()
