@@ -89,10 +89,10 @@ namespace Izmi
             var showSummary = !compactLayout || !globeView || mobileTab == 0;
             var panelWidth = compactLayout ? safeArea.width - 20f : 360f;
             var panelHeight = compactLayout
-                ? safeArea.height - (globeView ? 74f : 20f)
+                ? safeArea.height - 74f
                 : cityPrototype != null && cityPrototype.IsCityView ? 390f : 468f;
             var panelRect = compactLayout
-                ? new Rect(safeArea.x + 10f, safeArea.y + (globeView ? 64f : 10f), panelWidth, panelHeight)
+                ? new Rect(safeArea.x + 10f, safeArea.y + 64f, panelWidth, panelHeight)
                 : new Rect(28f, safeArea.y + 26f, panelWidth, panelHeight);
 
             if (showSummary)
@@ -232,7 +232,7 @@ namespace Izmi
                 if (GUILayout.Button(
                         navigationLabel,
                         buttonStyle,
-                        GUILayout.Height(32f)))
+                        GUILayout.Height(compactLayout ? 48f : 32f)))
                 {
                     if (cityPrototype.IsCityView)
                     {
