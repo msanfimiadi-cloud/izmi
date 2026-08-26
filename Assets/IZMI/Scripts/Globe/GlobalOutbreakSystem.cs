@@ -651,6 +651,44 @@ namespace Izmi
             return true;
         }
 
+        public bool OrganizeFoodConvoys()
+        {
+            if (!HasResources(0f, 0f, 5f, 0f) || !SpendResponsePoints(22f)) return false;
+            security -= 5f;
+            foodSupply = Mathf.Min(100f, foodSupply + 18f);
+            publicTrust = Mathf.Min(100f, publicTrust + 2f);
+            SetResponseMessage("ПРОДОВОЛЬСТВЕННЫЕ КОНВОИ ДОСТАВИЛИ ЗАПАСЫ");
+            AddNews("Вооружённые конвои доставили продовольствие в крупные города.");
+            SavePolicyState();
+            return true;
+        }
+
+        public bool ExpandMedicineProduction()
+        {
+            if (!HasResources(5f, 0f, 2f, 0f) || !SpendResponsePoints(28f)) return false;
+            foodSupply -= 5f;
+            security -= 2f;
+            medicalSupply = Mathf.Min(100f, medicalSupply + 17f);
+            cureResearch = Mathf.Min(100f, cureResearch + 1.5f);
+            SetResponseMessage("ФАРМАЦЕВТИЧЕСКИЕ ЛИНИИ ПЕРЕВЕДЕНЫ НА ВОЕННЫЙ РЕЖИМ");
+            AddNews("Уцелевшие заводы начали круглосуточный выпуск медикаментов.");
+            SavePolicyState();
+            return true;
+        }
+
+        public bool RestoreInfrastructure()
+        {
+            if (!HasResources(4f, 2f, 0f, 0f) || !SpendResponsePoints(20f)) return false;
+            foodSupply -= 4f;
+            medicalSupply -= 2f;
+            security = Mathf.Min(100f, security + 12f);
+            publicTrust = Mathf.Min(100f, publicTrust + 5f);
+            SetResponseMessage("ЭНЕРГОСЕТИ И ДОРОГИ ЧАСТИЧНО ВОССТАНОВЛЕНЫ");
+            AddNews("Инженерные подразделения восстановили дороги, связь и энергоснабжение.");
+            SavePolicyState();
+            return true;
+        }
+
         public bool InvestInDefense()
         {
             if (!HasResources(4f, 0f, 0f, 5f) || !SpendResponsePoints(25f)) return false;
