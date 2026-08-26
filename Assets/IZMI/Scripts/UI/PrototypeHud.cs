@@ -82,7 +82,7 @@ namespace Izmi
                 {
                     GUILayout.Space(5f);
                     GUILayout.Label(
-                        "ВЫБРАНО: " + selected.Name.ToUpperInvariant(),
+                        "ВЫБРАНО: " + LocalizeRegion(selected.Name),
                         titleStyle);
                     GUILayout.Label(
                         "НАСЕЛЕНИЕ: " + selected.Population.ToString("N0") +
@@ -96,6 +96,10 @@ namespace Izmi
                 cityPrototype.InfectionSystem != null)
             {
                 var infection = cityPrototype.InfectionSystem;
+                GUILayout.Label(
+                    "РЕГИОН: " + LocalizeRegion(cityPrototype.ActiveRegionName),
+                    titleStyle);
+                GUILayout.Space(3f);
                 GUILayout.Label(
                     "УРОВЕНЬ УГРОЗЫ: " + infection.AlertLevel,
                     titleStyle);
@@ -169,6 +173,22 @@ namespace Izmi
             }
 
             GUI.matrix = previousMatrix;
+        }
+
+        private static string LocalizeRegion(string regionName)
+        {
+            switch (regionName)
+            {
+                case "Europe": return "ЕВРОПА";
+                case "Asia": return "АЗИЯ";
+                case "North America": return "СЕВЕРНАЯ АМЕРИКА";
+                case "First anomaly": return "ЮГО-ВОСТОЧНАЯ АЗИЯ";
+                case "Africa": return "АФРИКА";
+                case "South America": return "ЮЖНАЯ АМЕРИКА";
+                case "Australia": return "АВСТРАЛИЯ";
+                case "Middle East": return "БЛИЖНИЙ ВОСТОК";
+                default: return regionName.ToUpperInvariant();
+            }
         }
 
         private void DrawGlobalStrategyPanel(float scale)
