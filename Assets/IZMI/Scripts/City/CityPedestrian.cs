@@ -45,6 +45,23 @@ namespace Izmi
             }
         }
 
+        public void SetHealthy()
+        {
+            if (!infected)
+            {
+                return;
+            }
+
+            infected = false;
+            speed /= 1.18f;
+            radius /= 1.12f;
+            transform.localScale /= 1.1f;
+            if (bodyRenderer != null && healthyMaterial != null)
+            {
+                bodyRenderer.sharedMaterial = healthyMaterial;
+            }
+        }
+
         private void OnEnable()
         {
             if (!All.Contains(this))
