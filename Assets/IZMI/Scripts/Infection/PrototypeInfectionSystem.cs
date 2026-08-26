@@ -8,8 +8,8 @@ namespace Izmi
         [SerializeField] private float infectionCheckInterval = 0.75f;
         [SerializeField] private float infectionDistance = 1.7f;
 
-        private readonly List<CityPedestrian> civilians = new();
-        private readonly HashSet<CityPedestrian> infected = new();
+        private readonly List<CityPedestrian> civilians = new List<CityPedestrian>();
+        private readonly HashSet<CityPedestrian> infected = new HashSet<CityPedestrian>();
         private Transform origin;
         private Material infectedMaterial;
         private float timer;
