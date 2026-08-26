@@ -38,6 +38,7 @@ namespace Izmi
         private Material healthyMaterial;
         private Material warningMaterial;
         private Material criticalMaterial;
+        private Material reservoirMaterial;
         private Material routeMaterial;
         private Material flightMaterial;
         private float spreadPulse;
@@ -811,6 +812,10 @@ namespace Izmi
                 {
                     region.MarkerRenderer.sharedMaterial = warningMaterial;
                 }
+                else if (region.WaterRisk >= 20f || region.AnimalRisk >= 20f)
+                {
+                    region.MarkerRenderer.sharedMaterial = reservoirMaterial;
+                }
                 else
                 {
                     region.MarkerRenderer.sharedMaterial = healthyMaterial;
@@ -850,6 +855,7 @@ namespace Izmi
             healthyMaterial = CreateEmissive("Stable Region", new Color(0.08f, 0.62f, 0.92f), 1.5f);
             warningMaterial = CreateEmissive("Affected Region", new Color(1f, 0.36f, 0.035f), 2f);
             criticalMaterial = CreateEmissive("Critical Region", new Color(0.95f, 0.025f, 0.015f), 2.4f);
+            reservoirMaterial = CreateEmissive("Environmental Reservoir", new Color(0.62f, 0.12f, 0.92f), 2f);
             routeMaterial = CreateEmissive("Air Route", new Color(0.08f, 0.38f, 0.62f, 0.42f), 0.8f);
             flightMaterial = CreateEmissive("Aircraft Light", new Color(0.75f, 0.94f, 1f), 2.2f);
         }
