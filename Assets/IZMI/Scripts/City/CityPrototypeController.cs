@@ -19,16 +19,29 @@ namespace Izmi
         private float commandPoints = 70f;
         private float messageTimer;
         private string commandMessage = "ОЖИДАНИЕ РЕШЕНИЯ";
+        private string builtRegion = "First anomaly";
 
         public bool IsCityView { get; private set; }
         public PrototypeInfectionSystem InfectionSystem { get; private set; }
         public int CommandPoints => Mathf.FloorToInt(commandPoints);
         public string CommandMessage => commandMessage;
         public string ActiveRegionName { get; private set; } = "First anomaly";
+        public string ActiveCityName => CityNameForRegion(ActiveRegionName);
 
         private void Awake()
         {
-            cityRoot = ProceduralCityBuilder.Build();
+            BuildCity(builtRegion);
+        }
+
+        private void BuildCity(string regionName)
+        {
+            if (cityRoot != null)
+            {
+                Destroy(cityRoot);
+            }
+
+            builtRegion = regionName;
+            cityRoot = ProceduralCityBuilder.Build(regionName);
             InfectionSystem = cityRoot.GetComponent<PrototypeInfectionSystem>();
             responseVisualizer = cityRoot.AddComponent<CityResponseVisualizer>();
             cityRoot.AddComponent<CityDayNightController>();
@@ -141,6 +154,10 @@ namespace Izmi
             {
                 activeRegion = globalOutbreak.SelectedRegion;
                 ActiveRegionName = activeRegion.Name;
+                if (builtRegion != ActiveRegionName)
+                {
+                    BuildCity(ActiveRegionName);
+                }
                 InfectionSystem.ConfigureRegionalSeverity(
                     activeRegion.Infected,
                     activeRegion.Population);
@@ -170,6 +187,21 @@ namespace Izmi
             }
 
             StartCoroutine(TransitionToGlobe());
+        }
+
+        private static string CityNameForRegion(string regionName)
+        {
+            switch (regionName)
+            {
+                case "Europe": return "БЕРЛИН";
+                case "Asia": return "ТОКИО";
+                case "North America": return "НЬЮ-ЙОРК";
+                case "Africa": return "НАЙРОБИ";
+                case "South America": return "САН-ПАУЛУ";
+                case "Australia": return "СИДНЕЙ";
+                case "Middle East": return "ДУБАЙ";
+                default: return "СИНГАПУР";
+            }
         }
 
         private void ResolveWorldObjects()
