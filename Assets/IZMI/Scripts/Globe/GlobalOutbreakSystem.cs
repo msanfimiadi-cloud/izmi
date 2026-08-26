@@ -14,6 +14,8 @@ namespace Izmi
             public string Name;
             public long Population;
             public double Infected;
+            public double Dead;
+            public double Recovered;
             public Transform Marker;
             public Renderer MarkerRenderer;
             public Color BaseColor;
@@ -57,6 +59,8 @@ namespace Izmi
         public IReadOnlyList<RegionState> Regions => regions;
         public long TotalPopulation { get; private set; }
         public long TotalInfected { get; private set; }
+        public long TotalDead { get; private set; }
+        public long TotalRecovered { get; private set; }
         public int InfectedRegions => infectedRegions;
         public RegionState SelectedRegion { get; private set; }
         public int ResponsePoints => Mathf.FloorToInt(responsePoints);
@@ -438,11 +442,24 @@ namespace Izmi
             var hasStoredWorld = false;
             foreach (var region in regions)
             {
-                var stored = PlayerPrefs.GetString("IZMI.Region." + region.Name, string.Empty);
+                var key = "IZMI.Region." + region.Name;
+                var stored = PlayerPrefs.GetString(key, string.Empty);
                 if (double.TryParse(stored, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
                 {
                     region.Infected = Math.Max(0d, Math.Min(region.Population, value));
                     hasStoredWorld = true;
+                }
+
+                var storedDead = PlayerPrefs.GetString(key + ".Dead", string.Empty);
+                if (double.TryParse(storedDead, NumberStyles.Float, CultureInfo.InvariantCulture, out var dead))
+                {
+                    region.Dead = Math.Max(0d, Math.Min(region.Population, dead));
+                }
+
+                var storedRecovered = PlayerPrefs.GetString(key + ".Recovered", string.Empty);
+                if (double.TryParse(storedRecovered, NumberStyles.Float, CultureInfo.InvariantCulture, out var recovered))
+                {
+                    region.Recovered = Math.Max(0d, Math.Min(region.Population, recovered));
                 }
             }
 
@@ -483,9 +500,16 @@ namespace Izmi
         {
             foreach (var region in regions)
             {
+                var key = "IZMI.Region." + region.Name;
                 PlayerPrefs.SetString(
-                    "IZMI.Region." + region.Name,
+                    key,
                     region.Infected.ToString("R", CultureInfo.InvariantCulture));
+                PlayerPrefs.SetString(
+                    key + ".Dead",
+                    region.Dead.ToString("R", CultureInfo.InvariantCulture));
+                PlayerPrefs.SetString(
+                    key + ".Recovered",
+                    region.Recovered.ToString("R", CultureInfo.InvariantCulture));
             }
             SavePolicyState();
             PlayerPrefs.Save();
@@ -533,23 +557,39 @@ namespace Izmi
         {
             foreach (var region in regions)
             {
-                if (region.Infected < 1d || region.Infected >= region.Population)
+                if (region.Infected < 1d)
                 {
                     continue;
                 }
 
-                var saturation = 1d - region.Infected / region.Population;
+                var availablePopulation = Math.Max(
+                    0d,
+                    region.Population - region.Dead - region.Recovered);
+                var saturation = availablePopulation > 0d
+                    ? Math.Max(0d, 1d - region.Infected / availablePopulation)
+                    : 0d;
                 var protection = Mathf.Clamp01(
                     shelterReadiness * 0.004f +
                     cureResearch * 0.003f +
                     medicalSupply * 0.0012f);
                 if (foodSupply < 25f) protection -= 0.12f;
                 protection = Mathf.Clamp01(protection);
-                var dailyGrowth = (cureResearch >= 100f ? -0.18d : 0.24d * (1d - protection)) * saturation;
+
                 var gameDays = deltaTime / 240d;
-                region.Infected = Math.Min(
-                    region.Population,
-                    region.Infected * Math.Exp(dailyGrowth * gameDays));
+                var dailyGrowth = 0.24d * (1d - protection) * saturation;
+                var newCases = region.Infected * (Math.Exp(dailyGrowth * gameDays) - 1d);
+                region.Infected = Math.Min(availablePopulation, region.Infected + Math.Max(0d, newCases));
+
+                var supplyCrisis = 1d + (100d - medicalSupply) / 45d;
+                var deaths = Math.Min(region.Infected, region.Infected * 0.0045d * supplyCrisis * gameDays);
+                region.Infected -= deaths;
+                region.Dead = Math.Min(region.Population, region.Dead + deaths);
+
+                var recoveryRate = 0.0015d + cureResearch / 100d * 0.028d;
+                if (cureResearch >= 100f) recoveryRate += 0.16d;
+                var recovered = Math.Min(region.Infected, region.Infected * recoveryRate * gameDays);
+                region.Infected -= recovered;
+                region.Recovered = Math.Min(region.Population - region.Dead, region.Recovered + recovered);
             }
         }
 
@@ -681,6 +721,8 @@ namespace Izmi
         private void RefreshTotals()
         {
             long infected = 0L;
+            long dead = 0L;
+            long recovered = 0L;
             long population = 0L;
             var affected = 0;
             foreach (var region in regions)
@@ -688,6 +730,8 @@ namespace Izmi
                 population += region.Population;
                 var regionalInfected = (long)Math.Min(region.Population, Math.Floor(region.Infected));
                 infected += regionalInfected;
+                dead += (long)Math.Floor(region.Dead);
+                recovered += (long)Math.Floor(region.Recovered);
                 if (regionalInfected > 0)
                 {
                     affected++;
@@ -696,6 +740,8 @@ namespace Izmi
 
             TotalPopulation = population;
             TotalInfected = infected;
+            TotalDead = dead;
+            TotalRecovered = recovered;
             infectedRegions = affected;
         }
 
