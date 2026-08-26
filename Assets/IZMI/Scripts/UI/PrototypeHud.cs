@@ -45,7 +45,7 @@ namespace Izmi
             var panelHeight =
                 cityPrototype != null && cityPrototype.IsCityView
                     ? 390f
-                    : 352f;
+                    : 438f;
             GUILayout.BeginArea(
                 new Rect(28f, 26f, panelWidth, panelHeight),
                 panelStyle);
@@ -97,6 +97,21 @@ namespace Izmi
                         "ПОГИБЛО: " + ((long)selected.Dead).ToString("N0") +
                         "   ВЫЗДОРОВЕЛО: " + ((long)selected.Recovered).ToString("N0"),
                         titleStyle);
+                    GUILayout.Label(
+                        "ВОДА: " + Mathf.RoundToInt(selected.WaterRisk) + "%   ЖИВОТНЫЕ: " +
+                        Mathf.RoundToInt(selected.AnimalRisk) + "%",
+                        titleStyle);
+                    GUILayout.Space(5f);
+                    GUILayout.BeginHorizontal();
+                    if (GUILayout.Button("ОЧИСТИТЬ ВОДУ\n20", buttonStyle, GUILayout.Height(42f)))
+                    {
+                        globalOutbreak.PurifySelectedWater();
+                    }
+                    if (GUILayout.Button("ВЕТЕРИНАРНЫЕ ГРУППЫ\n20", buttonStyle, GUILayout.Height(42f)))
+                    {
+                        globalOutbreak.ControlSelectedAnimals();
+                    }
+                    GUILayout.EndHorizontal();
                 }
                 GUILayout.Space(8f);
             }
