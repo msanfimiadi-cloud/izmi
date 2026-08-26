@@ -6,16 +6,33 @@ namespace Izmi
     public sealed class PrototypeInfectionSystem : MonoBehaviour
     {
         [SerializeField] private float infectionCheckInterval = 0.75f;
-        [SerializeField] private float infectionDistance = 1.7f;
+        [SerializeField] private float infectionDistance = 1.45f;
 
         private readonly List<CityPedestrian> civilians = new List<CityPedestrian>();
         private readonly HashSet<CityPedestrian> infected = new HashSet<CityPedestrian>();
         private Transform origin;
         private Material infectedMaterial;
         private float timer;
+        private int newlyInfectedLastWave;
 
         public int InfectedCount => infected.Count;
         public int PopulationCount => civilians.Count;
+        public int HealthyCount => Mathf.Max(0, PopulationCount - InfectedCount);
+        public int NewlyInfectedLastWave => newlyInfectedLastWave;
+        public float InfectionRatio => PopulationCount > 0
+            ? InfectedCount / (float)PopulationCount
+            : 0f;
+
+        public string AlertLevel
+        {
+            get
+            {
+                if (InfectionRatio >= 0.66f) return "КРИТИЧЕСКИЙ";
+                if (InfectionRatio >= 0.30f) return "ВЫСОКИЙ";
+                if (InfectionRatio >= 0.10f) return "ПОВЫШЕННЫЙ";
+                return "НАБЛЮДЕНИЕ";
+            }
+        }
 
         public void Configure(Transform infectionOrigin)
         {
@@ -27,16 +44,19 @@ namespace Izmi
             civilians.AddRange(GetComponentsInChildren<CityPedestrian>(true));
             infectedMaterial = CreateInfectedMaterial();
 
-            var firstVictim = FindClosestHealthy(origin.position, float.MaxValue);
-            if (firstVictim != null)
+            if (origin != null)
             {
-                Infect(firstVictim);
+                var firstVictim = FindClosestHealthy(origin.position, float.MaxValue);
+                if (firstVictim != null)
+                {
+                    Infect(firstVictim);
+                }
             }
         }
 
         private void Update()
         {
-            if (infected.Count == 0)
+            if (infected.Count == 0 || Time.timeScale <= 0f)
             {
                 return;
             }
@@ -52,16 +72,19 @@ namespace Izmi
 
             foreach (var carrier in infected)
             {
-                var victim = FindClosestHealthy(
-                    carrier.transform.position,
-                    infectionDistance);
+                if (carrier == null)
+                {
+                    continue;
+                }
 
+                var victim = FindClosestHealthy(carrier.transform.position, infectionDistance);
                 if (victim != null && !newlyInfected.Contains(victim))
                 {
                     newlyInfected.Add(victim);
                 }
             }
 
+            newlyInfectedLastWave = newlyInfected.Count;
             foreach (var victim in newlyInfected)
             {
                 Infect(victim);
@@ -98,13 +121,8 @@ namespace Izmi
                 return;
             }
 
-            var renderer = civilian.GetComponent<Renderer>();
-            if (renderer != null)
-            {
-                renderer.sharedMaterial = infectedMaterial;
-            }
-
-            civilian.transform.localScale *= 1.12f;
+            civilian.SetInfected(infectedMaterial);
+            civilian.transform.localScale *= 1.1f;
         }
 
         private static Material CreateInfectedMaterial()
@@ -112,13 +130,13 @@ namespace Izmi
             var material = new Material(Shader.Find("Standard"))
             {
                 name = "Infected Civilian",
-                color = new Color(0.42f, 0.08f, 0.055f)
+                color = new Color(0.33f, 0.055f, 0.035f)
             };
 
             if (material.HasProperty("_EmissionColor"))
             {
                 material.EnableKeyword("_EMISSION");
-                material.SetColor("_EmissionColor", new Color(0.32f, 0.015f, 0.005f));
+                material.SetColor("_EmissionColor", new Color(0.28f, 0.012f, 0.003f));
             }
 
             return material;
