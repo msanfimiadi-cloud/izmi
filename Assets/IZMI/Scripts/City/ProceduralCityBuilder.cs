@@ -105,6 +105,14 @@ namespace Izmi
                         continue;
                     }
 
+                    if (center.x < -2.2f && center.z < -2.2f)
+                    {
+                        CreateCube("Crisis Response District", root,
+                            new Vector3(center.x, 0.07f, center.z),
+                            new Vector3(4.15f, 0.18f, 4.15f), sidewalkMaterial);
+                        continue;
+                    }
+
                     CreateCube("Sidewalk Block", root, new Vector3(center.x, 0.06f, center.z),
                         new Vector3(4.15f, 0.16f, 4.15f), sidewalkMaterial);
 
