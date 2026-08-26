@@ -60,6 +60,10 @@ namespace Izmi
         private float publicTrust = 76f;
         private int safeSettlementCount;
         private long protectedPopulation;
+        private bool offlineReportVisible;
+        private double offlineElapsedGameMinutes;
+        private long offlineNewInfections;
+        private int offlineNewRegions;
 
         public IReadOnlyList<RegionState> Regions => regions;
         public long TotalPopulation { get; private set; }
@@ -82,6 +86,10 @@ namespace Izmi
         public int SafeSettlementCount => safeSettlementCount;
         public long ProtectedPopulation => protectedPopulation;
         public long LivingPopulation => Math.Max(0L, TotalPopulation - TotalDead);
+        public bool HasOfflineReport => offlineReportVisible;
+        public double OfflineElapsedGameMinutes => offlineElapsedGameMinutes;
+        public long OfflineNewInfections => offlineNewInfections;
+        public int OfflineNewRegions => offlineNewRegions;
         public string HumanityStatus
         {
             get
@@ -221,6 +229,11 @@ namespace Izmi
             RefreshVisuals();
             RefreshTotals();
             CheckCrisisEvent();
+        }
+
+        public void DismissOfflineReport()
+        {
+            offlineReportVisible = false;
         }
 
         public void ApplyCityQuarantine(RegionState region)
@@ -616,8 +629,17 @@ namespace Izmi
                 return;
             }
 
+            var infectedBeforeOffline = 0d;
+            var regionsBeforeOffline = 0;
+            foreach (var region in regions)
+            {
+                infectedBeforeOffline += region.Infected;
+                if (region.Infected >= 1d) regionsBeforeOffline++;
+            }
+
             var clock = GetComponent<SimulationClock>();
-            var offlineDays = clock != null ? clock.LastOfflineAdvanceMinutes / 1440d : 0d;
+            offlineElapsedGameMinutes = clock != null ? clock.LastOfflineAdvanceMinutes : 0d;
+            var offlineDays = offlineElapsedGameMinutes / 1440d;
             if (offlineDays <= 0d)
             {
                 return;
@@ -642,6 +664,20 @@ namespace Izmi
                     imports--;
                 }
             }
+
+            var infectedAfterOffline = 0d;
+            var regionsAfterOffline = 0;
+            foreach (var region in regions)
+            {
+                infectedAfterOffline += region.Infected;
+                if (region.Infected >= 1d) regionsAfterOffline++;
+            }
+
+            offlineNewInfections = (long)Math.Max(
+                0d,
+                Math.Floor(infectedAfterOffline - infectedBeforeOffline));
+            offlineNewRegions = Math.Max(0, regionsAfterOffline - regionsBeforeOffline);
+            offlineReportVisible = offlineElapsedGameMinutes >= 5d;
         }
 
         private void SaveRegionalState()
