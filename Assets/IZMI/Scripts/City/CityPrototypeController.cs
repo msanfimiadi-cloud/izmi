@@ -15,10 +15,12 @@ namespace Izmi
         private bool transitioning;
 
         public bool IsCityView { get; private set; }
+        public PrototypeInfectionSystem InfectionSystem { get; private set; }
 
         private void Awake()
         {
             cityRoot = ProceduralCityBuilder.Build();
+            InfectionSystem = cityRoot.GetComponent<PrototypeInfectionSystem>();
             cityRoot.SetActive(false);
         }
 
