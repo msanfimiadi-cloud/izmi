@@ -462,6 +462,21 @@ namespace Izmi
             GUILayout.Label(globalOutbreak.ResponseMessage, titleStyle);
             GUILayout.Space(8f);
 
+            GUILayout.Label("СНАБЖЕНИЕ И ИНФРАСТРУКТУРА", titleStyle);
+            if (GUILayout.Button("ПРОДОВОЛЬСТВЕННЫЕ КОНВОИ  •  22", buttonStyle, GUILayout.Height(38f)))
+            {
+                globalOutbreak.OrganizeFoodConvoys();
+            }
+            if (GUILayout.Button("ПРОИЗВОДСТВО МЕДИКАМЕНТОВ  •  28", buttonStyle, GUILayout.Height(38f)))
+            {
+                globalOutbreak.ExpandMedicineProduction();
+            }
+            if (GUILayout.Button("ВОССТАНОВИТЬ ИНФРАСТРУКТУРУ  •  20", buttonStyle, GUILayout.Height(38f)))
+            {
+                globalOutbreak.RestoreInfrastructure();
+            }
+            GUILayout.Space(8f);
+
             GUILayout.Label("КТО ПОЛУЧИТ ОРУЖИЕ  •  СМЕНА: 18", titleStyle);
             GUILayout.Label(globalOutbreak.ArmamentDoctrine, eventTextStyle);
             GUILayout.BeginHorizontal();
