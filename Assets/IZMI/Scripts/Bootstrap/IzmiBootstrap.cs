@@ -19,6 +19,7 @@ namespace Izmi
             root.AddComponent<CityPrototypeController>();
             root.AddComponent<PrototypeHud>();
             root.AddComponent<IzmiBootstrap>();
+            root.AddComponent<PrototypeSessionMenu>();
         }
 
         private void Awake()
