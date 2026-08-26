@@ -17,6 +17,9 @@ namespace Izmi
         private Texture2D panelTexture;
         private Texture2D activeTexture;
         private bool stylesReady;
+        private int mobileTab;
+        private Vector2 mobileSummaryScroll;
+        private Vector2 mobileStrategyScroll;
 
         private void Awake()
         {
@@ -53,23 +56,52 @@ namespace Izmi
             GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
 
             var virtualWidth = Screen.width / scale;
-            if (sessionMenu != null &&
-                GUI.Button(
-                    new Rect(virtualWidth * 0.5f - 54f, 18f, 108f, 34f),
-                    "МЕНЮ",
-                    buttonStyle))
+            var virtualHeight = Screen.height / scale;
+            var safeArea = GetVirtualSafeArea(scale);
+            var compactLayout = safeArea.width < 900f;
+            var globeView = cityPrototype == null || !cityPrototype.IsCityView;
+
+            var menuRect = compactLayout
+                ? new Rect(safeArea.xMax - 106f, safeArea.y + 10f, 96f, 44f)
+                : new Rect(virtualWidth * 0.5f - 54f, safeArea.y + 18f, 108f, 38f);
+            if (sessionMenu != null && GUI.Button(menuRect, "МЕНЮ", buttonStyle))
             {
                 sessionMenu.OpenMenu();
             }
 
-            var panelWidth = 360f;
-            var panelHeight =
-                cityPrototype != null && cityPrototype.IsCityView
-                    ? 390f
-                    : 468f;
-            GUILayout.BeginArea(
-                new Rect(28f, 26f, panelWidth, panelHeight),
-                panelStyle);
+            if (compactLayout && globeView)
+            {
+                var tabWidth = Mathf.Min(156f, (safeArea.width - 132f) * 0.5f);
+                var tabY = safeArea.y + 10f;
+                var summaryStyle = mobileTab == 0 ? activeButtonStyle : buttonStyle;
+                var strategyStyle = mobileTab == 1 ? activeButtonStyle : buttonStyle;
+
+                if (GUI.Button(new Rect(safeArea.x + 10f, tabY, tabWidth, 44f), "СВОДКА", summaryStyle))
+                {
+                    mobileTab = 0;
+                }
+                if (GUI.Button(new Rect(safeArea.x + 18f + tabWidth, tabY, tabWidth, 44f), "СТРАТЕГИЯ", strategyStyle))
+                {
+                    mobileTab = 1;
+                }
+            }
+
+            var showSummary = !compactLayout || !globeView || mobileTab == 0;
+            var panelWidth = compactLayout ? safeArea.width - 20f : 360f;
+            var panelHeight = compactLayout
+                ? safeArea.height - (globeView ? 74f : 20f)
+                : cityPrototype != null && cityPrototype.IsCityView ? 390f : 468f;
+            var panelRect = compactLayout
+                ? new Rect(safeArea.x + 10f, safeArea.y + (globeView ? 64f : 10f), panelWidth, panelHeight)
+                : new Rect(28f, safeArea.y + 26f, panelWidth, panelHeight);
+
+            if (showSummary)
+            {
+                GUILayout.BeginArea(panelRect, panelStyle);
+                if (compactLayout)
+                {
+                    mobileSummaryScroll = GUILayout.BeginScrollView(mobileSummaryScroll, false, true);
+                }
 
             GUILayout.Label("IZMI  •  ГЛОБАЛЬНОЕ НАБЛЮДЕНИЕ", titleStyle);
             GUILayout.Space(7f);
@@ -213,12 +245,22 @@ namespace Izmi
                 }
             }
 
-            GUILayout.EndArea();
+                if (compactLayout)
+                {
+                    GUILayout.EndScrollView();
+                }
+                GUILayout.EndArea();
+            }
 
-            if (globalOutbreak != null &&
-                (cityPrototype == null || !cityPrototype.IsCityView))
+            if (globalOutbreak != null && globeView)
             {
-                DrawGlobalStrategyPanel(scale);
+                if (!compactLayout || mobileTab == 1)
+                {
+                    var strategyRect = compactLayout
+                        ? new Rect(safeArea.x + 10f, safeArea.y + 64f, safeArea.width - 20f, safeArea.height - 74f)
+                        : new Rect(virtualWidth - 388f, safeArea.y + 26f, 360f, Mathf.Min(552f, virtualHeight - safeArea.y - 40f));
+                    DrawGlobalStrategyPanel(strategyRect, compactLayout);
+                }
                 if (globalOutbreak.HasEndingReport)
                 {
                     DrawEndingPanel(scale);
@@ -356,14 +398,13 @@ namespace Izmi
             }
         }
 
-        private void DrawGlobalStrategyPanel(float scale)
+        private void DrawGlobalStrategyPanel(Rect panelRect, bool compactLayout)
         {
-            var virtualWidth = Screen.width / scale;
-            var wideLayout = virtualWidth >= 900f;
-            var x = wideLayout ? virtualWidth - 388f : 28f;
-            var y = wideLayout ? 26f : 350f;
-
-            GUILayout.BeginArea(new Rect(x, y, 360f, 552f), panelStyle);
+            GUILayout.BeginArea(panelRect, panelStyle);
+            if (compactLayout)
+            {
+                mobileStrategyScroll = GUILayout.BeginScrollView(mobileStrategyScroll, false, true);
+            }
             GUILayout.Label("МЕЖДУНАРОДНЫЙ КРИЗИСНЫЙ СОВЕТ", titleStyle);
             GUILayout.Space(5f);
             GUILayout.Label(
@@ -413,7 +454,21 @@ namespace Izmi
                 globalOutbreak.BuildShelters();
             }
 
+            if (compactLayout)
+            {
+                GUILayout.EndScrollView();
+            }
             GUILayout.EndArea();
+        }
+
+        private Rect GetVirtualSafeArea(float scale)
+        {
+            var safe = Screen.safeArea;
+            return new Rect(
+                safe.x / scale,
+                (Screen.height - safe.yMax) / scale,
+                safe.width / scale,
+                safe.height / scale);
         }
 
         private void DrawInfectionBar(float ratio)
