@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace Izmi
 {
@@ -41,6 +42,7 @@ namespace Izmi
         public long TotalPopulation { get; private set; }
         public long TotalInfected { get; private set; }
         public int InfectedRegions => infectedRegions;
+        public RegionState SelectedRegion { get; private set; }
 
         public void Initialize(Transform globeTransform)
         {
@@ -65,6 +67,7 @@ namespace Izmi
             CreateRoute(3, 6);
             CreateRoute(4, 5);
             CreateRoute(4, 7);
+            SelectedRegion = regions.Count > 3 ? regions[3] : regions[0];
             RefreshTotals();
         }
 
@@ -75,6 +78,7 @@ namespace Izmi
                 return;
             }
 
+            HandleRegionSelection();
             SimulateLocalGrowth(Time.deltaTime);
             spreadPulse += Time.deltaTime;
             if (spreadPulse >= 2.4f)
@@ -86,6 +90,49 @@ namespace Izmi
             UpdateFlights();
             RefreshVisuals();
             RefreshTotals();
+        }
+
+        private void HandleRegionSelection()
+        {
+            Vector2? pointer = null;
+            if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
+            {
+                pointer = Mouse.current.position.ReadValue();
+            }
+            else if (Touchscreen.current != null &&
+                     Touchscreen.current.primaryTouch.press.wasPressedThisFrame)
+            {
+                pointer = Touchscreen.current.primaryTouch.position.ReadValue();
+            }
+
+            var camera = Camera.main;
+            if (!pointer.HasValue || camera == null)
+            {
+                return;
+            }
+
+            RegionState nearest = null;
+            var nearestDistance = 34f;
+            foreach (var region in regions)
+            {
+                var screenPoint = camera.WorldToScreenPoint(region.Marker.position);
+                if (screenPoint.z <= 0f)
+                {
+                    continue;
+                }
+
+                var distance = Vector2.Distance(pointer.Value, new Vector2(screenPoint.x, screenPoint.y));
+                if (distance < nearestDistance)
+                {
+                    nearest = region;
+                    nearestDistance = distance;
+                }
+            }
+
+            if (nearest != null)
+            {
+                SelectedRegion = nearest;
+            }
         }
 
         private void RegisterRegion(string regionName, long population, double infected)
