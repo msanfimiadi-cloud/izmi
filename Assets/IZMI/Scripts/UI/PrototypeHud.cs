@@ -45,7 +45,7 @@ namespace Izmi
             var panelHeight =
                 cityPrototype != null && cityPrototype.IsCityView
                     ? 390f
-                    : 312f;
+                    : 352f;
             GUILayout.BeginArea(
                 new Rect(28f, 26f, panelWidth, panelHeight),
                 panelStyle);
@@ -74,6 +74,10 @@ namespace Izmi
                     "ЗАРАЖЕНО: " + globalOutbreak.TotalInfected.ToString("N0"),
                     titleStyle);
                 GUILayout.Label(
+                    "ПОГИБЛО: " + globalOutbreak.TotalDead.ToString("N0") +
+                    "   ВЫЗДОРОВЕЛО: " + globalOutbreak.TotalRecovered.ToString("N0"),
+                    titleStyle);
+                GUILayout.Label(
                     "ЗАТРОНУТО РЕГИОНОВ: " + globalOutbreak.InfectedRegions +
                     " / " + globalOutbreak.Regions.Count,
                     titleStyle);
@@ -88,6 +92,10 @@ namespace Izmi
                     GUILayout.Label(
                         "НАСЕЛЕНИЕ: " + selected.Population.ToString("N0") +
                         "   ЗАРАЖЕНО: " + ((long)selected.Infected).ToString("N0"),
+                        titleStyle);
+                    GUILayout.Label(
+                        "ПОГИБЛО: " + ((long)selected.Dead).ToString("N0") +
+                        "   ВЫЗДОРОВЕЛО: " + ((long)selected.Recovered).ToString("N0"),
                         titleStyle);
                 }
                 GUILayout.Space(8f);
