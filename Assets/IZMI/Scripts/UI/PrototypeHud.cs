@@ -37,7 +37,7 @@ namespace Izmi
             var panelWidth = 360f;
             var panelHeight =
                 cityPrototype != null && cityPrototype.IsCityView
-                    ? 270f
+                    ? 390f
                     : 198f;
             GUILayout.BeginArea(
                 new Rect(28f, 26f, panelWidth, panelHeight),
@@ -71,6 +71,36 @@ namespace Izmi
                     "   ЗДОРОВЫ: " + infection.HealthyCount,
                     titleStyle);
                 DrawInfectionBar(infection.InfectionRatio);
+                GUILayout.Space(5f);
+                GUILayout.Label(
+                    "ЭВАКУИРОВАНО: " + infection.EvacuatedCount +
+                    (infection.IsQuarantineActive
+                        ? "   КАРАНТИН: " + Mathf.CeilToInt(infection.QuarantineSeconds) + "с"
+                        : string.Empty),
+                    titleStyle);
+                GUILayout.Space(7f);
+                GUILayout.Label(
+                    "РЕСУРС КОМАНДОВАНИЯ: " + cityPrototype.CommandPoints + " / 100",
+                    titleStyle);
+                DrawCommandBar(cityPrototype.CommandPoints / 100f);
+                GUILayout.Space(5f);
+                GUILayout.Label(cityPrototype.CommandMessage, titleStyle);
+                GUILayout.Space(6f);
+
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("КАРАНТИН\n30", buttonStyle, GUILayout.Height(44f)))
+                {
+                    cityPrototype.TryQuarantine();
+                }
+                if (GUILayout.Button("МЕДБРИГАДЫ\n40", buttonStyle, GUILayout.Height(44f)))
+                {
+                    cityPrototype.TryMedicalTeams();
+                }
+                if (GUILayout.Button("ЭВАКУАЦИЯ\n25", buttonStyle, GUILayout.Height(44f)))
+                {
+                    cityPrototype.TryEvacuation();
+                }
+                GUILayout.EndHorizontal();
                 GUILayout.Space(7f);
             }
 
@@ -103,6 +133,14 @@ namespace Izmi
         private void DrawInfectionBar(float ratio)
         {
             var rect = GUILayoutUtility.GetRect(300f, 10f, GUILayout.ExpandWidth(true));
+            GUI.DrawTexture(rect, panelTexture);
+            var fill = new Rect(rect.x, rect.y, rect.width * Mathf.Clamp01(ratio), rect.height);
+            GUI.DrawTexture(fill, activeTexture);
+        }
+
+        private void DrawCommandBar(float ratio)
+        {
+            var rect = GUILayoutUtility.GetRect(300f, 7f, GUILayout.ExpandWidth(true));
             GUI.DrawTexture(rect, panelTexture);
             var fill = new Rect(rect.x, rect.y, rect.width * Mathf.Clamp01(ratio), rect.height);
             GUI.DrawTexture(fill, activeTexture);
