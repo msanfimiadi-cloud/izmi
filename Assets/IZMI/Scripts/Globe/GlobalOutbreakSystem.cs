@@ -46,6 +46,8 @@ namespace Izmi
         private float cureResearch;
         private float shelterReadiness;
         private string responseMessage = "СОВЕТ ОЖИДАЕТ РЕШЕНИЯ";
+        private int crisisEventIndex;
+        private bool crisisEventVisible;
 
         public IReadOnlyList<RegionState> Regions => regions;
         public long TotalPopulation { get; private set; }
@@ -58,6 +60,33 @@ namespace Izmi
         public int ShelterReadiness => Mathf.RoundToInt(shelterReadiness);
         public string ResponseMessage => responseMessage;
         public bool AreFlightsRestricted => travelRestrictionTimer > 0f;
+        public bool HasCrisisEvent => crisisEventVisible;
+        public string CrisisEventTitle
+        {
+            get
+            {
+                switch (crisisEventIndex)
+                {
+                    case 0: return "ПЕРВЫЙ ПОДТВЕРЖДЁННЫЙ ОЧАГ";
+                    case 1: return "ЗАРАЖЕНИЕ В МЕЖДУНАРОДНОМ АЭРОПОРТУ";
+                    case 2: return "МИЛЛИОНЫ ЛЮДЕЙ ПОКИДАЮТ ГОРОДА";
+                    default: return string.Empty;
+                }
+            }
+        }
+        public string CrisisEventDescription
+        {
+            get
+            {
+                switch (crisisEventIndex)
+                {
+                    case 0: return "Неизвестная инфекция передаётся людям. Мир ждёт вашего первого приказа.";
+                    case 1: return "Самолёты уже разлетелись по миру. Запасы еды и медикаментов зависят от открытых границ.";
+                    case 2: return "Дороги переполнены. Военные, врачи и гражданские требуют разных решений.";
+                    default: return string.Empty;
+                }
+            }
+        }
         public string StrategicDirection
         {
             get
@@ -97,6 +126,7 @@ namespace Izmi
             LoadPolicyState();
             SelectedRegion = regions.Count > 3 ? regions[3] : regions[0];
             RefreshTotals();
+            CheckCrisisEvent();
         }
 
         private void Update()
@@ -137,6 +167,74 @@ namespace Izmi
             }
             RefreshVisuals();
             RefreshTotals();
+            CheckCrisisEvent();
+        }
+
+        public string GetCrisisChoiceLabel(int choice)
+        {
+            switch (crisisEventIndex)
+            {
+                case 0:
+                    return choice == 0 ? "ИЗОЛИРОВАТЬ ЗОНУ"
+                        : choice == 1 ? "ПЕРЕДАТЬ ОБРАЗЦЫ УЧЁНЫМ"
+                        : "ТИХО ВЫВЕЗТИ СПЕЦИАЛИСТОВ";
+                case 1:
+                    return choice == 0 ? "ЗАКРЫТЬ ВСЕ РЕЙСЫ"
+                        : choice == 1 ? "ОСТАВИТЬ МЕДИЦИНСКИЕ КОРИДОРЫ"
+                        : "ЭВАКУИРОВАТЬ ДЕТЕЙ";
+                case 2:
+                    return choice == 0 ? "ПЕРЕДАТЬ КОНТРОЛЬ ВОЕННЫМ"
+                        : choice == 1 ? "МАССОВОЕ ТЕСТИРОВАНИЕ"
+                        : "СТРОИТЬ АВТОНОМНЫЕ ПОСЕЛЕНИЯ";
+                default:
+                    return string.Empty;
+            }
+        }
+
+        public void SelectCrisisChoice(int choice)
+        {
+            if (!crisisEventVisible || choice < 0 || choice > 2)
+            {
+                return;
+            }
+
+            if (choice == 0)
+            {
+                warReadiness = Mathf.Min(100f, warReadiness + 14f);
+                travelRestrictionTimer = Mathf.Max(travelRestrictionTimer, 36f);
+                SetResponseMessage("МИР ВЫБИРАЕТ СИЛОВОЙ ОТВЕТ");
+            }
+            else if (choice == 1)
+            {
+                cureResearch = Mathf.Min(100f, cureResearch + 14f);
+                SetResponseMessage("УЧЁНЫЕ ПОЛУЧИЛИ НОВЫЕ ДАННЫЕ");
+            }
+            else
+            {
+                shelterReadiness = Mathf.Min(100f, shelterReadiness + 14f);
+                SetResponseMessage("НАЧАТА ПОДГОТОВКА БЕЗОПАСНЫХ ЗОН");
+            }
+
+            crisisEventVisible = false;
+            crisisEventIndex++;
+            PlayerPrefs.SetInt("IZMI.Events.Index", crisisEventIndex);
+            SavePolicyState();
+        }
+
+        private void CheckCrisisEvent()
+        {
+            if (crisisEventVisible || crisisEventIndex >= 3)
+            {
+                return;
+            }
+
+            var threshold = crisisEventIndex == 0
+                ? 1000L
+                : crisisEventIndex == 1 ? 100000L : 1000000L;
+            if (TotalInfected >= threshold)
+            {
+                crisisEventVisible = true;
+            }
         }
 
         public bool InvestInDefense()
@@ -236,6 +334,7 @@ namespace Izmi
             warReadiness = PlayerPrefs.GetFloat("IZMI.Policy.War", 0f);
             cureResearch = PlayerPrefs.GetFloat("IZMI.Policy.Cure", 0f);
             shelterReadiness = PlayerPrefs.GetFloat("IZMI.Policy.Shelter", 0f);
+            crisisEventIndex = PlayerPrefs.GetInt("IZMI.Events.Index", 0);
         }
 
         private void SavePolicyState()
