@@ -39,12 +39,36 @@ namespace Izmi
         private float spreadPulse;
         private int infectedRegions = 1;
         private float autosaveTimer;
+        private float responsePoints = 75f;
+        private float travelRestrictionTimer;
+        private float messageTimer;
+        private float warReadiness;
+        private float cureResearch;
+        private float shelterReadiness;
+        private string responseMessage = "СОВЕТ ОЖИДАЕТ РЕШЕНИЯ";
 
         public IReadOnlyList<RegionState> Regions => regions;
         public long TotalPopulation { get; private set; }
         public long TotalInfected { get; private set; }
         public int InfectedRegions => infectedRegions;
         public RegionState SelectedRegion { get; private set; }
+        public int ResponsePoints => Mathf.FloorToInt(responsePoints);
+        public int WarReadiness => Mathf.RoundToInt(warReadiness);
+        public int CureResearch => Mathf.RoundToInt(cureResearch);
+        public int ShelterReadiness => Mathf.RoundToInt(shelterReadiness);
+        public string ResponseMessage => responseMessage;
+        public bool AreFlightsRestricted => travelRestrictionTimer > 0f;
+        public string StrategicDirection
+        {
+            get
+            {
+                var best = Mathf.Max(warReadiness, cureResearch, shelterReadiness);
+                if (best < 15f) return "НЕ ОПРЕДЕЛЕНО";
+                if (Mathf.Approximately(best, warReadiness)) return "ПОДГОТОВКА К ВОЙНЕ";
+                if (Mathf.Approximately(best, cureResearch)) return "ПОИСК ЛЕЧЕНИЯ";
+                return "СОХРАНЕНИЕ ЛЮДЕЙ";
+            }
+        }
 
         public void Initialize(Transform globeTransform)
         {
@@ -70,6 +94,7 @@ namespace Izmi
             CreateRoute(4, 5);
             CreateRoute(4, 7);
             LoadRegionalState();
+            LoadPolicyState();
             SelectedRegion = regions.Count > 3 ? regions[3] : regions[0];
             RefreshTotals();
         }
@@ -85,6 +110,14 @@ namespace Izmi
             if (Time.timeScale <= 0f)
             {
                 return;
+            }
+
+            responsePoints = Mathf.Min(100f, responsePoints + Time.deltaTime * 0.16f);
+            travelRestrictionTimer = Mathf.Max(0f, travelRestrictionTimer - Time.deltaTime);
+            if (messageTimer > 0f)
+            {
+                messageTimer -= Time.deltaTime;
+                if (messageTimer <= 0f) responseMessage = "СОВЕТ ОЖИДАЕТ РЕШЕНИЯ";
             }
 
             SimulateLocalGrowth(Time.deltaTime);
@@ -104,6 +137,54 @@ namespace Izmi
             }
             RefreshVisuals();
             RefreshTotals();
+        }
+
+        public bool InvestInDefense()
+        {
+            if (!SpendResponsePoints(25f)) return false;
+            warReadiness = Mathf.Min(100f, warReadiness + 12f);
+            travelRestrictionTimer = Mathf.Max(travelRestrictionTimer, 30f);
+            SetResponseMessage("ВОЕННЫЕ ОГРАНИЧИЛИ ПЕРЕМЕЩЕНИЯ");
+            SavePolicyState();
+            return true;
+        }
+
+        public bool FundCureResearch()
+        {
+            if (!SpendResponsePoints(35f)) return false;
+            cureResearch = Mathf.Min(100f, cureResearch + 11f);
+            SetResponseMessage(cureResearch >= 100f
+                ? "ПРОТОТИП ЛЕЧЕНИЯ ГОТОВ"
+                : "ИССЛЕДОВАНИЯ УСКОРЕНЫ");
+            SavePolicyState();
+            return true;
+        }
+
+        public bool BuildShelters()
+        {
+            if (!SpendResponsePoints(30f)) return false;
+            shelterReadiness = Mathf.Min(100f, shelterReadiness + 12f);
+            SetResponseMessage("УБЕЖИЩА ПРИНИМАЮТ ЛЮДЕЙ");
+            SavePolicyState();
+            return true;
+        }
+
+        private bool SpendResponsePoints(float cost)
+        {
+            if (responsePoints < cost)
+            {
+                SetResponseMessage("НЕДОСТАТОЧНО РЕСУРСА");
+                return false;
+            }
+
+            responsePoints -= cost;
+            return true;
+        }
+
+        private void SetResponseMessage(string message)
+        {
+            responseMessage = message;
+            messageTimer = 6f;
         }
 
         private void HandleRegionSelection()
@@ -147,6 +228,23 @@ namespace Izmi
             {
                 SelectedRegion = nearest;
             }
+        }
+
+        private void LoadPolicyState()
+        {
+            responsePoints = PlayerPrefs.GetFloat("IZMI.Policy.Points", 75f);
+            warReadiness = PlayerPrefs.GetFloat("IZMI.Policy.War", 0f);
+            cureResearch = PlayerPrefs.GetFloat("IZMI.Policy.Cure", 0f);
+            shelterReadiness = PlayerPrefs.GetFloat("IZMI.Policy.Shelter", 0f);
+        }
+
+        private void SavePolicyState()
+        {
+            PlayerPrefs.SetFloat("IZMI.Policy.Points", responsePoints);
+            PlayerPrefs.SetFloat("IZMI.Policy.War", warReadiness);
+            PlayerPrefs.SetFloat("IZMI.Policy.Cure", cureResearch);
+            PlayerPrefs.SetFloat("IZMI.Policy.Shelter", shelterReadiness);
+            PlayerPrefs.Save();
         }
 
         private void LoadRegionalState()
@@ -203,6 +301,7 @@ namespace Izmi
                     "IZMI.Region." + region.Name,
                     region.Infected.ToString("R", CultureInfo.InvariantCulture));
             }
+            SavePolicyState();
             PlayerPrefs.Save();
         }
 
@@ -254,7 +353,9 @@ namespace Izmi
                 }
 
                 var saturation = 1d - region.Infected / region.Population;
-                var dailyGrowth = 0.24d * saturation;
+                var protection = Mathf.Clamp01(
+                    shelterReadiness * 0.004f + cureResearch * 0.003f);
+                var dailyGrowth = (cureResearch >= 100f ? -0.18d : 0.24d * (1d - protection)) * saturation;
                 var gameDays = deltaTime / 240d;
                 region.Infected = Math.Min(
                     region.Population,
@@ -287,7 +388,9 @@ namespace Izmi
                 }
 
                 var pressure = Mathf.Clamp01((float)(source.Infected / 250000d));
-                if (UnityEngine.Random.value < 0.08f + pressure * 0.32f)
+                var borderControl = 1f - warReadiness * 0.0065f;
+                if (AreFlightsRestricted) borderControl *= 0.18f;
+                if (UnityEngine.Random.value < (0.08f + pressure * 0.32f) * borderControl)
                 {
                     region.Infected = UnityEngine.Random.Range(8, 42);
                     return;
