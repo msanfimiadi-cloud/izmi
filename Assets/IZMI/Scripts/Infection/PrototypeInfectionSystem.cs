@@ -55,6 +55,11 @@ namespace Izmi
                 1 + Mathf.RoundToInt((float)ratio * 28f + absolutePressure * 8f),
                 1,
                 12);
+
+            if (civilians.Count > 0)
+            {
+                SeedInitialInfections();
+            }
         }
 
         public void DeployQuarantine(float duration)
@@ -111,17 +116,24 @@ namespace Izmi
             civilians.AddRange(GetComponentsInChildren<CityPedestrian>(true));
             infectedMaterial = CreateInfectedMaterial();
 
-            if (origin != null)
+            SeedInitialInfections();
+        }
+
+        private void SeedInitialInfections()
+        {
+            if (origin == null)
             {
-                for (var index = 0; index < initialInfectedCount; index++)
+                return;
+            }
+
+            while (infected.Count < initialInfectedCount)
+            {
+                var firstVictim = FindClosestHealthy(origin.position, float.MaxValue);
+                if (firstVictim == null)
                 {
-                    var firstVictim = FindClosestHealthy(origin.position, float.MaxValue);
-                    if (firstVictim == null)
-                    {
-                        break;
-                    }
-                    Infect(firstVictim);
+                    break;
                 }
+                Infect(firstVictim);
             }
         }
 
