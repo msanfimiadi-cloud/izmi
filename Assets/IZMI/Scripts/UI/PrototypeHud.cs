@@ -7,6 +7,7 @@ namespace Izmi
         private SimulationClock simulationClock;
         private CityPrototypeController cityPrototype;
         private GlobalOutbreakSystem globalOutbreak;
+        private PrototypeSessionMenu sessionMenu;
         private GUIStyle panelStyle;
         private GUIStyle titleStyle;
         private GUIStyle bodyStyle;
@@ -22,11 +23,21 @@ namespace Izmi
             simulationClock = GetComponent<SimulationClock>();
             cityPrototype = GetComponent<CityPrototypeController>();
             globalOutbreak = GetComponent<GlobalOutbreakSystem>();
+            sessionMenu = GetComponent<PrototypeSessionMenu>();
         }
 
         private void OnGUI()
         {
             if (simulationClock == null)
+            {
+                return;
+            }
+
+            if (sessionMenu == null)
+            {
+                sessionMenu = GetComponent<PrototypeSessionMenu>();
+            }
+            if (sessionMenu != null && sessionMenu.IsOpen)
             {
                 return;
             }
@@ -40,6 +51,16 @@ namespace Izmi
             var scale = Mathf.Clamp(Screen.width / 1440f, 0.72f, 1.25f);
             var previousMatrix = GUI.matrix;
             GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
+
+            var virtualWidth = Screen.width / scale;
+            if (sessionMenu != null &&
+                GUI.Button(
+                    new Rect(virtualWidth * 0.5f - 54f, 18f, 108f, 34f),
+                    "МЕНЮ",
+                    buttonStyle))
+            {
+                sessionMenu.OpenMenu();
+            }
 
             var panelWidth = 360f;
             var panelHeight =
