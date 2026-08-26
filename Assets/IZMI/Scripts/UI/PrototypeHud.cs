@@ -108,6 +108,10 @@ namespace Izmi
             GUILayout.Label(
                 simulationClock.CurrentDate.ToString("dd.MM.yyyy  •  HH:mm"),
                 bodyStyle);
+            if (globalOutbreak != null)
+            {
+                GUILayout.Label("СЛОЖНОСТЬ: " + globalOutbreak.DifficultyName, titleStyle);
+            }
             GUILayout.Space(9f);
 
             GUILayout.BeginHorizontal();
