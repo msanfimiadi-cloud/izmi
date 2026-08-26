@@ -16,6 +16,7 @@ namespace Izmi
 
             var root = new GameObject("IZMI Prototype");
             root.AddComponent<SimulationClock>();
+            root.AddComponent<CityPrototypeController>();
             root.AddComponent<PrototypeHud>();
             root.AddComponent<IzmiBootstrap>();
         }
