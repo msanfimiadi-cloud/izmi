@@ -14,6 +14,7 @@
 
 - [Дизайн-документ](docs/GAME_DESIGN.md)
 - [Технический план](docs/TECHNICAL_PLAN.md)
+- [Запуск и тестирование на Windows](docs/WINDOWS_SETUP.md)
 
 ## Технологии
 
