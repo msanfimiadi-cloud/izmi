@@ -16,6 +16,7 @@ namespace Izmi
         private float timer;
         private float quarantineTimer;
         private int newlyInfectedLastWave;
+        private int initialInfectedCount = 1;
 
         public int InfectedCount => infected.Count;
         public int PopulationCount => civilians.Count;
@@ -42,6 +43,18 @@ namespace Izmi
         public void Configure(Transform infectionOrigin)
         {
             origin = infectionOrigin;
+        }
+
+        public void ConfigureRegionalSeverity(double regionalInfected, long regionalPopulation)
+        {
+            var ratio = regionalPopulation > 0L
+                ? regionalInfected / regionalPopulation
+                : 0d;
+            var absolutePressure = Mathf.Clamp01((float)(regionalInfected / 1000000d));
+            initialInfectedCount = Mathf.Clamp(
+                1 + Mathf.RoundToInt((float)ratio * 28f + absolutePressure * 8f),
+                1,
+                12);
         }
 
         public void DeployQuarantine(float duration)
@@ -100,9 +113,13 @@ namespace Izmi
 
             if (origin != null)
             {
-                var firstVictim = FindClosestHealthy(origin.position, float.MaxValue);
-                if (firstVictim != null)
+                for (var index = 0; index < initialInfectedCount; index++)
                 {
+                    var firstVictim = FindClosestHealthy(origin.position, float.MaxValue);
+                    if (firstVictim == null)
+                    {
+                        break;
+                    }
                     Infect(firstVictim);
                 }
             }
