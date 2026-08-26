@@ -16,6 +16,11 @@ namespace Izmi
         public float CurrentSpeed => SupportedSpeeds[speedIndex];
         public bool IsPaused => CurrentSpeed <= 0f;
 
+        private void Awake()
+        {
+            Time.timeScale = CurrentSpeed;
+        }
+
         private void Update()
         {
             var gameMinutes =
@@ -33,6 +38,7 @@ namespace Izmi
                 if (Mathf.Approximately(SupportedSpeeds[index], requestedSpeed))
                 {
                     speedIndex = index;
+                    Time.timeScale = CurrentSpeed;
                     return;
                 }
             }
