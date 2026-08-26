@@ -33,6 +33,7 @@ namespace Izmi
             CreateAtmosphere(globe.transform);
             CreateCloudLayer(globe.transform);
             CreateCityMarkers(globe.transform);
+            gameObject.AddComponent<GlobalOutbreakSystem>().Initialize(globe.transform);
             CreateCamera(globe.transform);
         }
 
@@ -254,6 +255,10 @@ namespace Izmi
             CreateMarker(globe, "Asia", 55.0f, 82.9f, new Color(0.2f, 0.85f, 1f));
             CreateMarker(globe, "North America", 40.7f, -74.0f, new Color(0.2f, 0.85f, 1f));
             CreateMarker(globe, "First anomaly", 1.3f, 103.8f, new Color(1f, 0.16f, 0.08f));
+            CreateMarker(globe, "Africa", 0.3f, 32.5f, new Color(0.2f, 0.85f, 1f));
+            CreateMarker(globe, "South America", -23.5f, -46.6f, new Color(0.2f, 0.85f, 1f));
+            CreateMarker(globe, "Australia", -33.9f, 151.2f, new Color(0.2f, 0.85f, 1f));
+            CreateMarker(globe, "Middle East", 25.2f, 55.3f, new Color(0.2f, 0.85f, 1f));
         }
 
         private static void CreateMarker(
