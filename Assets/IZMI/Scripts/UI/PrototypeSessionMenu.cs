@@ -14,6 +14,7 @@ namespace Izmi
         private bool stylesReady;
         private bool confirmNewWorld;
         private float previousSpeed = 1f;
+        private int selectedDifficulty = 1;
 
         public bool IsOpen { get; private set; }
         public bool HasSavedWorld =>
@@ -22,6 +23,7 @@ namespace Izmi
         private void Awake()
         {
             clock = GetComponent<SimulationClock>();
+            selectedDifficulty = Mathf.Clamp(PlayerPrefs.GetInt("IZMI.World.Difficulty", 1), 0, 2);
             if (PlayerPrefs.GetInt("IZMI.Session.AutoStart", 0) == 1)
             {
                 PlayerPrefs.DeleteKey("IZMI.Session.AutoStart");
@@ -51,6 +53,11 @@ namespace Izmi
 
         public void ContinueGame()
         {
+            if (!HasSavedWorld)
+            {
+                PlayerPrefs.SetInt("IZMI.World.Difficulty", selectedDifficulty);
+                PlayerPrefs.Save();
+            }
             IsOpen = false;
             confirmNewWorld = false;
             if (clock != null)
@@ -78,7 +85,8 @@ namespace Izmi
                 safe.width / scale,
                 safe.height / scale);
             var width = Mathf.Min(560f, safeRect.width - 24f);
-            var desiredHeight = confirmNewWorld ? 360f : 330f;
+            var showDifficulty = !HasSavedWorld || confirmNewWorld;
+            var desiredHeight = showDifficulty ? 430f : 330f;
             var height = Mathf.Min(desiredHeight, safeRect.height - 24f);
             var rect = new Rect(
                 safeRect.x + (safeRect.width - width) * 0.5f,
@@ -93,6 +101,17 @@ namespace Izmi
             GUILayout.Label(
                 "Наблюдайте за живой планетой, принимайте решения и определите, чем закончится история человечества.",
                 subtitleStyle);
+            GUILayout.Space(12f);
+            if (showDifficulty)
+            {
+                DrawDifficultySelector();
+            }
+            else
+            {
+                GUILayout.Label(
+                    "СЛОЖНОСТЬ МИРА: " + DifficultyLabel(selectedDifficulty),
+                    subtitleStyle);
+            }
             GUILayout.FlexibleSpace();
 
             if (!confirmNewWorld)
@@ -144,10 +163,44 @@ namespace Izmi
         private void StartNewWorld()
         {
             PlayerPrefs.DeleteAll();
+            PlayerPrefs.SetInt("IZMI.World.Difficulty", selectedDifficulty);
             PlayerPrefs.SetInt("IZMI.Session.AutoStart", 1);
             PlayerPrefs.Save();
             Time.timeScale = 1f;
             SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+        }
+
+        private void DrawDifficultySelector()
+        {
+            GUILayout.Label("ВЫБЕРИТЕ СЛОЖНОСТЬ", subtitleStyle);
+            GUILayout.Space(6f);
+            GUILayout.BeginHorizontal();
+            DrawDifficultyButton(0, "ИСТОРИЯ\nМЕДЛЕННЕЕ");
+            DrawDifficultyButton(1, "КРИЗИС\nСТАНДАРТ");
+            DrawDifficultyButton(2, "ВЫМИРАНИЕ\nБЫСТРЕЕ");
+            GUILayout.EndHorizontal();
+        }
+
+        private void DrawDifficultyButton(int level, string label)
+        {
+            var previousColor = GUI.backgroundColor;
+            if (selectedDifficulty == level)
+            {
+                GUI.backgroundColor = new Color(0.16f, 0.62f, 0.96f);
+            }
+
+            if (GUILayout.Button(label, buttonStyle, GUILayout.Height(54f)))
+            {
+                selectedDifficulty = level;
+            }
+            GUI.backgroundColor = previousColor;
+        }
+
+        private static string DifficultyLabel(int level)
+        {
+            if (level == 0) return "ИСТОРИЯ";
+            if (level == 2) return "ВЫМИРАНИЕ";
+            return "КРИЗИС";
         }
 
         private void EnsureStyles()
