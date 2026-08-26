@@ -48,6 +48,11 @@ namespace Izmi
         private string responseMessage = "СОВЕТ ОЖИДАЕТ РЕШЕНИЯ";
         private int crisisEventIndex;
         private bool crisisEventVisible;
+        private float resourcePulse;
+        private float foodSupply = 82f;
+        private float medicalSupply = 74f;
+        private float security = 68f;
+        private float publicTrust = 76f;
 
         public IReadOnlyList<RegionState> Regions => regions;
         public long TotalPopulation { get; private set; }
@@ -61,6 +66,21 @@ namespace Izmi
         public string ResponseMessage => responseMessage;
         public bool AreFlightsRestricted => travelRestrictionTimer > 0f;
         public bool HasCrisisEvent => crisisEventVisible;
+        public int FoodSupply => Mathf.RoundToInt(foodSupply);
+        public int MedicalSupply => Mathf.RoundToInt(medicalSupply);
+        public int Security => Mathf.RoundToInt(security);
+        public int PublicTrust => Mathf.RoundToInt(publicTrust);
+        public string WorldCondition
+        {
+            get
+            {
+                var weakest = Mathf.Min(Mathf.Min(foodSupply, medicalSupply), Mathf.Min(security, publicTrust));
+                if (weakest < 15f) return "КОЛЛАПС";
+                if (weakest < 35f) return "КРИТИЧЕСКОЕ";
+                if (weakest < 60f) return "НАПРЯЖЁННОЕ";
+                return "СТАБИЛЬНОЕ";
+            }
+        }
         public string CrisisEventTitle
         {
             get
@@ -151,6 +171,13 @@ namespace Izmi
             }
 
             SimulateLocalGrowth(Time.deltaTime);
+            resourcePulse += Time.deltaTime;
+            if (resourcePulse >= 12f)
+            {
+                resourcePulse = 0f;
+                ApplyResourcePressure();
+            }
+
             spreadPulse += Time.deltaTime;
             if (spreadPulse >= 2.4f)
             {
@@ -168,6 +195,43 @@ namespace Izmi
             RefreshVisuals();
             RefreshTotals();
             CheckCrisisEvent();
+        }
+
+        private void ApplyResourcePressure()
+        {
+            var globalRatio = TotalPopulation > 0
+                ? TotalInfected / (double)TotalPopulation
+                : 0d;
+            var crisisPressure = Mathf.Clamp01((float)(globalRatio * 180d));
+
+            foodSupply -= InfectedRegions * 0.18f + shelterReadiness * 0.006f;
+            medicalSupply -= InfectedRegions * 0.14f + crisisPressure * 1.8f;
+            security -= InfectedRegions * 0.1f + crisisPressure * 1.25f;
+            publicTrust -= InfectedRegions * 0.08f + crisisPressure * 1.4f;
+
+            if (InfectedRegions <= 1)
+            {
+                foodSupply += 0.2f;
+                security += 0.1f;
+                publicTrust += 0.12f;
+            }
+
+            foodSupply = Mathf.Clamp(foodSupply, 0f, 100f);
+            medicalSupply = Mathf.Clamp(medicalSupply, 0f, 100f);
+            security = Mathf.Clamp(security, 0f, 100f);
+            publicTrust = Mathf.Clamp(publicTrust, 0f, 100f);
+        }
+
+        private bool HasResources(float food, float medicine, float order, float trust)
+        {
+            if (foodSupply >= food && medicalSupply >= medicine &&
+                security >= order && publicTrust >= trust)
+            {
+                return true;
+            }
+
+            SetResponseMessage("НЕ ХВАТАЕТ ЗАПАСОВ ДЛЯ ЭТОГО РЕШЕНИЯ");
+            return false;
         }
 
         public string GetCrisisChoiceLabel(int choice)
@@ -200,17 +264,24 @@ namespace Izmi
 
             if (choice == 0)
             {
+                security = Mathf.Min(100f, security + 7f);
+                publicTrust = Mathf.Max(0f, publicTrust - 6f);
+                foodSupply = Mathf.Max(0f, foodSupply - 3f);
                 warReadiness = Mathf.Min(100f, warReadiness + 14f);
                 travelRestrictionTimer = Mathf.Max(travelRestrictionTimer, 36f);
                 SetResponseMessage("МИР ВЫБИРАЕТ СИЛОВОЙ ОТВЕТ");
             }
             else if (choice == 1)
             {
+                medicalSupply = Mathf.Max(0f, medicalSupply - 6f);
+                publicTrust = Mathf.Min(100f, publicTrust + 3f);
                 cureResearch = Mathf.Min(100f, cureResearch + 14f);
                 SetResponseMessage("УЧЁНЫЕ ПОЛУЧИЛИ НОВЫЕ ДАННЫЕ");
             }
             else
             {
+                foodSupply = Mathf.Max(0f, foodSupply - 8f);
+                publicTrust = Mathf.Min(100f, publicTrust + 7f);
                 shelterReadiness = Mathf.Min(100f, shelterReadiness + 14f);
                 SetResponseMessage("НАЧАТА ПОДГОТОВКА БЕЗОПАСНЫХ ЗОН");
             }
@@ -239,7 +310,10 @@ namespace Izmi
 
         public bool InvestInDefense()
         {
-            if (!SpendResponsePoints(25f)) return false;
+            if (!HasResources(4f, 0f, 0f, 5f) || !SpendResponsePoints(25f)) return false;
+            foodSupply -= 4f;
+            publicTrust -= 5f;
+            security = Mathf.Min(100f, security + 9f);
             warReadiness = Mathf.Min(100f, warReadiness + 12f);
             travelRestrictionTimer = Mathf.Max(travelRestrictionTimer, 30f);
             SetResponseMessage("ВОЕННЫЕ ОГРАНИЧИЛИ ПЕРЕМЕЩЕНИЯ");
@@ -249,7 +323,9 @@ namespace Izmi
 
         public bool FundCureResearch()
         {
-            if (!SpendResponsePoints(35f)) return false;
+            if (!HasResources(0f, 7f, 0f, 0f) || !SpendResponsePoints(35f)) return false;
+            medicalSupply -= 7f;
+            publicTrust = Mathf.Min(100f, publicTrust + 2f);
             cureResearch = Mathf.Min(100f, cureResearch + 11f);
             SetResponseMessage(cureResearch >= 100f
                 ? "ПРОТОТИП ЛЕЧЕНИЯ ГОТОВ"
@@ -260,7 +336,10 @@ namespace Izmi
 
         public bool BuildShelters()
         {
-            if (!SpendResponsePoints(30f)) return false;
+            if (!HasResources(9f, 0f, 3f, 0f) || !SpendResponsePoints(30f)) return false;
+            foodSupply -= 9f;
+            security -= 3f;
+            publicTrust = Mathf.Min(100f, publicTrust + 7f);
             shelterReadiness = Mathf.Min(100f, shelterReadiness + 12f);
             SetResponseMessage("УБЕЖИЩА ПРИНИМАЮТ ЛЮДЕЙ");
             SavePolicyState();
@@ -334,6 +413,10 @@ namespace Izmi
             warReadiness = PlayerPrefs.GetFloat("IZMI.Policy.War", 0f);
             cureResearch = PlayerPrefs.GetFloat("IZMI.Policy.Cure", 0f);
             shelterReadiness = PlayerPrefs.GetFloat("IZMI.Policy.Shelter", 0f);
+            foodSupply = PlayerPrefs.GetFloat("IZMI.Resource.Food", 82f);
+            medicalSupply = PlayerPrefs.GetFloat("IZMI.Resource.Medicine", 74f);
+            security = PlayerPrefs.GetFloat("IZMI.Resource.Security", 68f);
+            publicTrust = PlayerPrefs.GetFloat("IZMI.Resource.Trust", 76f);
             crisisEventIndex = PlayerPrefs.GetInt("IZMI.Events.Index", 0);
         }
 
@@ -343,6 +426,10 @@ namespace Izmi
             PlayerPrefs.SetFloat("IZMI.Policy.War", warReadiness);
             PlayerPrefs.SetFloat("IZMI.Policy.Cure", cureResearch);
             PlayerPrefs.SetFloat("IZMI.Policy.Shelter", shelterReadiness);
+            PlayerPrefs.SetFloat("IZMI.Resource.Food", foodSupply);
+            PlayerPrefs.SetFloat("IZMI.Resource.Medicine", medicalSupply);
+            PlayerPrefs.SetFloat("IZMI.Resource.Security", security);
+            PlayerPrefs.SetFloat("IZMI.Resource.Trust", publicTrust);
             PlayerPrefs.Save();
         }
 
@@ -453,7 +540,11 @@ namespace Izmi
 
                 var saturation = 1d - region.Infected / region.Population;
                 var protection = Mathf.Clamp01(
-                    shelterReadiness * 0.004f + cureResearch * 0.003f);
+                    shelterReadiness * 0.004f +
+                    cureResearch * 0.003f +
+                    medicalSupply * 0.0012f);
+                if (foodSupply < 25f) protection -= 0.12f;
+                protection = Mathf.Clamp01(protection);
                 var dailyGrowth = (cureResearch >= 100f ? -0.18d : 0.24d * (1d - protection)) * saturation;
                 var gameDays = deltaTime / 240d;
                 region.Infected = Math.Min(
@@ -487,7 +578,9 @@ namespace Izmi
                 }
 
                 var pressure = Mathf.Clamp01((float)(source.Infected / 250000d));
-                var borderControl = 1f - warReadiness * 0.0065f;
+                var borderControl =
+                    (1f - warReadiness * 0.0065f) *
+                    Mathf.Lerp(1.35f, 0.72f, publicTrust / 100f);
                 if (AreFlightsRestricted) borderControl *= 0.18f;
                 if (UnityEngine.Random.value < (0.08f + pressure * 0.32f) * borderControl)
                 {
