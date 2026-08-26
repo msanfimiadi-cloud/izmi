@@ -37,7 +37,7 @@ namespace Izmi
             var panelWidth = 360f;
             var panelHeight =
                 cityPrototype != null && cityPrototype.IsCityView
-                    ? 226f
+                    ? 270f
                     : 198f;
             GUILayout.BeginArea(
                 new Rect(28f, 26f, panelWidth, panelHeight),
@@ -63,10 +63,15 @@ namespace Izmi
             {
                 var infection = cityPrototype.InfectionSystem;
                 GUILayout.Label(
-                    "ЗАРАЖЕНО: " + infection.InfectedCount +
-                    " / " + infection.PopulationCount,
+                    "УРОВЕНЬ УГРОЗЫ: " + infection.AlertLevel,
                     titleStyle);
-                GUILayout.Space(5f);
+                GUILayout.Space(3f);
+                GUILayout.Label(
+                    "ЗАРАЖЕНО: " + infection.InfectedCount +
+                    "   ЗДОРОВЫ: " + infection.HealthyCount,
+                    titleStyle);
+                DrawInfectionBar(infection.InfectionRatio);
+                GUILayout.Space(7f);
             }
 
             if (cityPrototype != null)
@@ -93,6 +98,14 @@ namespace Izmi
 
             GUILayout.EndArea();
             GUI.matrix = previousMatrix;
+        }
+
+        private void DrawInfectionBar(float ratio)
+        {
+            var rect = GUILayoutUtility.GetRect(300f, 10f, GUILayout.ExpandWidth(true));
+            GUI.DrawTexture(rect, panelTexture);
+            var fill = new Rect(rect.x, rect.y, rect.width * Mathf.Clamp01(ratio), rect.height);
+            GUI.DrawTexture(fill, activeTexture);
         }
 
         private void DrawSpeedButton(string label, float speed)
