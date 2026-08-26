@@ -305,6 +305,7 @@ namespace Izmi
 
             var controller = cameraObject.AddComponent<GlobeCameraController>();
             controller.Configure(globe, 5.3f, 14f);
+            cameraObject.AddComponent<CityCameraController>();
         }
 
         private static Material CreateMaterial(
