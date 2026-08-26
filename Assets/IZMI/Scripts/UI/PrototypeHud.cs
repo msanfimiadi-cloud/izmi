@@ -6,6 +6,7 @@ namespace Izmi
     {
         private SimulationClock simulationClock;
         private CityPrototypeController cityPrototype;
+        private GlobalOutbreakSystem globalOutbreak;
         private GUIStyle panelStyle;
         private GUIStyle titleStyle;
         private GUIStyle bodyStyle;
@@ -19,6 +20,7 @@ namespace Izmi
         {
             simulationClock = GetComponent<SimulationClock>();
             cityPrototype = GetComponent<CityPrototypeController>();
+            globalOutbreak = GetComponent<GlobalOutbreakSystem>();
         }
 
         private void OnGUI()
@@ -29,6 +31,10 @@ namespace Izmi
             }
 
             EnsureStyles();
+            if (globalOutbreak == null)
+            {
+                globalOutbreak = GetComponent<GlobalOutbreakSystem>();
+            }
 
             var scale = Mathf.Clamp(Screen.width / 1440f, 0.72f, 1.25f);
             var previousMatrix = GUI.matrix;
@@ -38,7 +44,7 @@ namespace Izmi
             var panelHeight =
                 cityPrototype != null && cityPrototype.IsCityView
                     ? 390f
-                    : 198f;
+                    : 264f;
             GUILayout.BeginArea(
                 new Rect(28f, 26f, panelWidth, panelHeight),
                 panelStyle);
@@ -57,6 +63,21 @@ namespace Izmi
             DrawSpeedButton("×20", 20f);
             GUILayout.EndHorizontal();
             GUILayout.Space(9f);
+
+            if (globalOutbreak != null &&
+                (cityPrototype == null || !cityPrototype.IsCityView))
+            {
+                GUILayout.Label("ГЛОБАЛЬНАЯ ОБСТАНОВКА", titleStyle);
+                GUILayout.Space(3f);
+                GUILayout.Label(
+                    "ЗАРАЖЕНО: " + globalOutbreak.TotalInfected.ToString("N0"),
+                    titleStyle);
+                GUILayout.Label(
+                    "ЗАТРОНУТО РЕГИОНОВ: " + globalOutbreak.InfectedRegions +
+                    " / " + globalOutbreak.Regions.Count,
+                    titleStyle);
+                GUILayout.Space(8f);
+            }
 
             if (cityPrototype != null && cityPrototype.IsCityView &&
                 cityPrototype.InfectionSystem != null)
