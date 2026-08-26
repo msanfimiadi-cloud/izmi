@@ -198,7 +198,11 @@ namespace Izmi
                 (cityPrototype == null || !cityPrototype.IsCityView))
             {
                 DrawGlobalStrategyPanel(scale);
-                if (globalOutbreak.HasOfflineReport)
+                if (globalOutbreak.HasEndingReport)
+                {
+                    DrawEndingPanel(scale);
+                }
+                else if (globalOutbreak.HasOfflineReport)
                 {
                     DrawOfflineReportPanel(scale);
                 }
@@ -209,6 +213,34 @@ namespace Izmi
             }
 
             GUI.matrix = previousMatrix;
+        }
+
+        private void DrawEndingPanel(float scale)
+        {
+            var virtualWidth = Screen.width / scale;
+            var virtualHeight = Screen.height / scale;
+            var width = Mathf.Min(620f, virtualWidth - 40f);
+            var x = (virtualWidth - width) * 0.5f;
+            var y = Mathf.Max(20f, (virtualHeight - 300f) * 0.5f);
+
+            GUILayout.BeginArea(new Rect(x, y, width, 300f), panelStyle);
+            GUILayout.Label("ИТОГ МИРОВОГО КРИЗИСА", titleStyle);
+            GUILayout.Space(8f);
+            GUILayout.Label(globalOutbreak.EndingTitle, bodyStyle);
+            GUILayout.Space(10f);
+            GUILayout.Label(globalOutbreak.EndingDescription, eventTextStyle);
+            GUILayout.FlexibleSpace();
+            GUILayout.Label(
+                "ЖИВЫ: " + globalOutbreak.LivingPopulation.ToString("N0") +
+                "   ПОГИБЛО: " + globalOutbreak.TotalDead.ToString("N0"),
+                titleStyle);
+            GUILayout.Space(8f);
+
+            if (GUILayout.Button("ПРОДОЛЖИТЬ НАБЛЮДЕНИЕ", buttonStyle, GUILayout.Height(40f)))
+            {
+                globalOutbreak.AcknowledgeEnding();
+            }
+            GUILayout.EndArea();
         }
 
         private void DrawOfflineReportPanel(float scale)
@@ -316,6 +348,9 @@ namespace Izmi
             GUILayout.Label(
                 "СТРАТЕГИЯ: " + globalOutbreak.StrategicDirection,
                 titleStyle);
+            GUILayout.Label(
+                "ЦЕЛЬ: " + globalOutbreak.CurrentObjective,
+                eventTextStyle);
             GUILayout.Label(
                 "РЕСУРС РЕАГИРОВАНИЯ: " + globalOutbreak.ResponsePoints + " / 100",
                 titleStyle);
