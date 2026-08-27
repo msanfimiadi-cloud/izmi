@@ -519,6 +519,23 @@ namespace Izmi
             {
                 globalOutbreak.SequenceCurrentVariant();
             }
+            GUILayout.Label(
+                "ЗАПАС ВАКЦИНЫ: " + globalOutbreak.VaccineStock + "%  •  " +
+                globalOutbreak.VaccineStatus,
+                eventTextStyle);
+            GUILayout.Label(
+                "ОХВАТ ВЫБРАННОГО РЕГИОНА: " + globalOutbreak.SelectedVaccination + "%",
+                eventTextStyle);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("ПРОИЗВЕСТИ ВАКЦИНУ\n24", buttonStyle, GUILayout.Height(46f)))
+            {
+                globalOutbreak.ProduceVaccineBatches();
+            }
+            if (GUILayout.Button("ВАКЦИНИРОВАТЬ РЕГИОН\n18", buttonStyle, GUILayout.Height(46f)))
+            {
+                globalOutbreak.VaccinateSelectedRegion();
+            }
+            GUILayout.EndHorizontal();
             GUILayout.Label("ГОТОВНОСТЬ УБЕЖИЩ  " + globalOutbreak.ShelterReadiness + "%", titleStyle);
             DrawCommandBar(globalOutbreak.ShelterReadiness / 100f);
             GUILayout.Space(7f);
