@@ -67,6 +67,7 @@ namespace Izmi
         private float fuelSupply = 72f;
         private float globalCooperation = 66f;
         private float blackMarketActivity = 12f;
+        private float intelligenceCoverage = 20f;
         private int safeSettlementCount;
         private long protectedPopulation;
         private bool offlineReportVisible;
@@ -122,7 +123,11 @@ namespace Izmi
         public string BlackMarketStatus => blackMarketActivity >= 80f ? "КОНТРАБАНДА КОНТРОЛИРУЕТ СНАБЖЕНИЕ"
             : blackMarketActivity >= 50f ? "КРУПНЫЕ ПОДПОЛЬНЫЕ СЕТИ"
             : blackMarketActivity >= 25f ? "РАСТУЩИЙ НЕЛЕГАЛЬНЫЙ ОБОРОТ"
-            : "ЕДИНИЧНЫЕ СЛУЧАИ";        public int SafeSettlementCount => safeSettlementCount;
+            : "ЕДИНИЧНЫЕ СЛУЧАИ";
+        public int IntelligenceCoverage => Mathf.RoundToInt(intelligenceCoverage);
+        public string IntelligenceStatus => intelligenceCoverage >= 75f ? "СЕТИ КОНТРАБАНДЫ ПРОСЛЕЖИВАЮТСЯ"
+            : intelligenceCoverage >= 40f ? "ЧАСТИЧНЫЙ КОНТРОЛЬ МАРШРУТОВ"
+            : "НЕЛЕГАЛЬНЫЕ МАРШРУТЫ НЕИЗВЕСТНЫ";        public int SafeSettlementCount => safeSettlementCount;
         public long ProtectedPopulation => protectedPopulation;
         public long ShelterCapacity => 100000L +
             safeSettlementCount * 500000L +
@@ -534,6 +539,9 @@ namespace Izmi
                 Mathf.Max(0f, 45f - publicTrust) * 0.012f -
                 security * 0.0025f;
             blackMarketActivity = Mathf.Clamp(blackMarketActivity, 0f, 100f);
+            intelligenceCoverage = Mathf.Max(
+                0f,
+                intelligenceCoverage - 0.22f - blackMarketActivity * 0.0015f);
             var smugglingLoss = blackMarketActivity / 100f;
             foodSupply -= smugglingLoss * 0.38f;
             medicalSupply -= smugglingLoss * 0.3f;
@@ -789,6 +797,25 @@ namespace Izmi
             SetResponseMessage("ПОРЯДОК РАСПРЕДЕЛЕНИЯ ПРОДОВОЛЬСТВИЯ ИЗМЕНЁН");
             AddNews("Совет изменил порядок распределения продовольствия: " +
                 RationDoctrine.ToLowerInvariant() + ".");
+            SavePolicyState();
+            return true;
+        }
+
+        public bool LaunchSmugglingIntelligenceOperation()
+        {
+            if (!HasResources(0f, 0f, 5f, 0f) ||
+                !HasFuel(3f) ||
+                !SpendResponsePoints(22f))
+            {
+                return false;
+            }
+
+            security -= 5f;
+            fuelSupply -= 3f;
+            intelligenceCoverage = Mathf.Min(100f, intelligenceCoverage + 34f);
+            blackMarketActivity = Mathf.Max(0f, blackMarketActivity - 8f);
+            SetResponseMessage("РАЗВЕДКА ВСКРЫЛА НЕЛЕГАЛЬНЫЕ ТРАНСПОРТНЫЕ ЦЕПОЧКИ");
+            AddNews("Разведывательные группы нанесли на карту скрытые маршруты контрабанды.");
             SavePolicyState();
             return true;
         }
@@ -1261,6 +1288,7 @@ namespace Izmi
             fuelSupply = PlayerPrefs.GetFloat("IZMI.Resource.Fuel", 72f);
             globalCooperation = PlayerPrefs.GetFloat("IZMI.Policy.Cooperation", 66f);
             blackMarketActivity = PlayerPrefs.GetFloat("IZMI.Resource.BlackMarket", 12f);
+            intelligenceCoverage = PlayerPrefs.GetFloat("IZMI.Policy.Intelligence", 20f);
             safeSettlementCount = PlayerPrefs.GetInt("IZMI.Survival.Settlements", 0);
             long.TryParse(
                 PlayerPrefs.GetString("IZMI.Survival.Protected", "0"),
@@ -1289,6 +1317,7 @@ namespace Izmi
             PlayerPrefs.SetFloat("IZMI.Resource.Fuel", fuelSupply);
             PlayerPrefs.SetFloat("IZMI.Policy.Cooperation", globalCooperation);
             PlayerPrefs.SetFloat("IZMI.Resource.BlackMarket", blackMarketActivity);
+            PlayerPrefs.SetFloat("IZMI.Policy.Intelligence", intelligenceCoverage);
             PlayerPrefs.SetInt("IZMI.Survival.Settlements", safeSettlementCount);
             PlayerPrefs.SetInt("IZMI.Policy.Armament", armamentDoctrine);
             PlayerPrefs.SetInt("IZMI.Policy.Rations", rationDoctrine);
@@ -1610,6 +1639,10 @@ namespace Izmi
                     (1f - warReadiness * 0.0065f) *
                     Mathf.Lerp(1.35f, 0.72f, publicTrust / 100f);
                 if (AreFlightsRestricted) borderControl *= 0.18f;
+                var illegalRoutePressure =
+                    blackMarketActivity / 100f *
+                    Mathf.Lerp(0.28f, 0.05f, intelligenceCoverage / 100f);
+                borderControl += illegalRoutePressure;
                 var difficultySpread = DifficultyLevel == 0 ? 0.68f
                     : DifficultyLevel == 2 ? 1.5f : 1f;
                 if (UnityEngine.Random.value < (0.08f + pressure * 0.32f) * borderControl * difficultySpread)
@@ -1669,7 +1702,8 @@ namespace Izmi
         {
             foreach (var flight in flights)
             {
-                flight.Progress += Time.deltaTime * flight.Speed;
+                var trafficMultiplier = AreFlightsRestricted ? 0.14f : 1f;
+                flight.Progress += Time.deltaTime * flight.Speed * trafficMultiplier;
                 if (flight.Progress > 1f)
                 {
                     flight.Progress -= 1f;
