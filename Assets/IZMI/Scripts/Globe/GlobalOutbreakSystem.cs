@@ -567,7 +567,7 @@ namespace Izmi
             mutationPressure +=
                 Mathf.Clamp01((float)(infectedRatioForMutation * 450d)) * 1.6f +
                 reservoirPressure * 0.08f;
-            if (mutationPressure >= 100f && variantLevel < 3)
+            while (mutationPressure >= 100f && variantLevel < 3)
             {
                 mutationPressure -= 100f;
                 variantLevel++;
@@ -576,6 +576,10 @@ namespace Izmi
                 AddNews("Обнаружен новый штамм уровня " + variantLevel +
                     ". Часть исследований лечения устарела.");
                 SetResponseMessage("ОБНАРУЖЕН НОВЫЙ ШТАММ ИНФЕКЦИИ");
+            }
+            if (variantLevel >= 3)
+            {
+                mutationPressure = Mathf.Min(100f, mutationPressure);
             }
 
             var displacementRatio = TotalPopulation > 0L
