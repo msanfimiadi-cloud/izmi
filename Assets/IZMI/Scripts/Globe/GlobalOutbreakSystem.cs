@@ -776,9 +776,10 @@ namespace Izmi
 
         public bool HoldInternationalSummit()
         {
-            if (!HasResources(4f, 0f, 0f, 8f) || !SpendResponsePoints(24f)) return false;
+            if (!HasResources(4f, 2f, 0f, 0f) || !SpendResponsePoints(24f)) return false;
             foodSupply -= 4f;
-            publicTrust -= 8f;
+            medicalSupply -= 2f;
+            publicTrust = Mathf.Min(100f, publicTrust + 3f);
             globalCooperation = Mathf.Min(100f, globalCooperation + 24f);
             responsePoints = Mathf.Min(100f, responsePoints + 4f);
             SetResponseMessage("СТРАНЫ СОГЛАСОВАЛИ СОВМЕСТНЫЙ ПЛАН");
