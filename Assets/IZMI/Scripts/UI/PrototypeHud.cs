@@ -526,6 +526,15 @@ namespace Izmi
             GUILayout.Label(
                 "ОХВАТ ВЫБРАННОГО РЕГИОНА: " + globalOutbreak.SelectedVaccination + "%",
                 eventTextStyle);
+            GUILayout.Label(
+                "ГОТОВНОСТЬ НАСЕЛЕНИЯ: " + globalOutbreak.VaccineAcceptance + "%  •  " +
+                globalOutbreak.VaccineAcceptanceStatus,
+                eventTextStyle);
+            DrawCommandBar(globalOutbreak.VaccineAcceptance / 100f);
+            if (GUILayout.Button("ИНФОРМАЦИОННАЯ КАМПАНИЯ  •  16", buttonStyle, GUILayout.Height(38f)))
+            {
+                globalOutbreak.RunVaccinationCampaign();
+            }
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("ПРОИЗВЕСТИ ВАКЦИНУ\n24", buttonStyle, GUILayout.Height(46f)))
             {
@@ -536,6 +545,10 @@ namespace Izmi
                 globalOutbreak.VaccinateSelectedRegion();
             }
             GUILayout.EndHorizontal();
+            if (GUILayout.Button("ОБЯЗАТЕЛЬНАЯ ВАКЦИНАЦИЯ РЕГИОНА  •  15", buttonStyle, GUILayout.Height(38f)))
+            {
+                globalOutbreak.EnforceSelectedVaccination();
+            }
             GUILayout.Label("ГОТОВНОСТЬ УБЕЖИЩ  " + globalOutbreak.ShelterReadiness + "%", titleStyle);
             DrawCommandBar(globalOutbreak.ShelterReadiness / 100f);
             GUILayout.Space(7f);
