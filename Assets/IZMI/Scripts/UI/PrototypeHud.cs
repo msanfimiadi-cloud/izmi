@@ -454,6 +454,21 @@ namespace Izmi
             }
             GUILayout.EndHorizontal();
             GUILayout.Label(
+                "ЧЁРНЫЙ РЫНОК: " + globalOutbreak.BlackMarketActivity + "%  •  " +
+                globalOutbreak.BlackMarketStatus,
+                eventTextStyle);
+            DrawCommandBar(globalOutbreak.BlackMarketActivity / 100f);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("СИЛОВЫЕ РЕЙДЫ\n20", buttonStyle, GUILayout.Height(46f)))
+            {
+                globalOutbreak.CrackDownOnBlackMarket();
+            }
+            if (GUILayout.Button("КОНТРОЛИРУЕМЫЙ ОБМЕН\n16", buttonStyle, GUILayout.Height(46f)))
+            {
+                globalOutbreak.RegulateEmergencyTrade();
+            }
+            GUILayout.EndHorizontal();
+            GUILayout.Label(
                 "ПОСЕЛЕНИЯ: " + globalOutbreak.SafeSettlementCount +
                 "   ПОД ЗАЩИТОЙ: " + globalOutbreak.ProtectedPopulation.ToString("N0"),
                 titleStyle);
