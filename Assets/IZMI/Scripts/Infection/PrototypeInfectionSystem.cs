@@ -5,6 +5,8 @@ namespace Izmi
 {
     public sealed class PrototypeInfectionSystem : MonoBehaviour
     {
+        public static PrototypeInfectionSystem Active { get; private set; }
+
         [SerializeField] private float infectionCheckInterval = 0.75f;
         [SerializeField] private float infectionDistance = 1.45f;
 
@@ -43,6 +45,28 @@ namespace Izmi
         public void Configure(Transform infectionOrigin)
         {
             origin = infectionOrigin;
+        }
+
+        private void OnEnable()
+        {
+            Active = this;
+        }
+
+        private void OnDisable()
+        {
+            if (Active == this) Active = null;
+        }
+
+        public void TryInfectFromAttack(CityPedestrian victim)
+        {
+            if (victim == null || victim.IsInfected ||
+                evacuated.Contains(victim) ||
+                IsQuarantineActive && Random.value > 0.38f)
+            {
+                return;
+            }
+
+            Infect(victim);
         }
 
         public void ConfigureRegionalSeverity(double regionalInfected, long regionalPopulation)
