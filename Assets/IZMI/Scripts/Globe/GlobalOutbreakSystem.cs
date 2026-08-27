@@ -1085,13 +1085,12 @@ namespace Izmi
                     region.ReliefStock * 0.0022f);
                 if (foodSupply < 25f) protection -= 0.12f;
                 protection = Mathf.Clamp01(protection);
+                var gameDays = deltaTime / 240d;
                 var logisticsPressure = Mathf.Clamp01((float)(region.Infected / 500000d));
                 region.ReliefStock = Mathf.Max(0f, region.ReliefStock - (0.25f + logisticsPressure * 1.4f) * (float)gameDays);
                 region.SupplyDisruption = Mathf.Clamp(
                     region.SupplyDisruption + (region.Infected >= 100d ? 0.2f : -0.12f) * (float)gameDays,
                     0f, 100f);
-
-                var gameDays = deltaTime / 240d;
                 var difficultyGrowth = DifficultyLevel == 0 ? 0.72d
                     : DifficultyLevel == 2 ? 1.48d : 1d;
                 var dailyGrowth = 0.24d * difficultyGrowth * (1d - protection) * saturation;
