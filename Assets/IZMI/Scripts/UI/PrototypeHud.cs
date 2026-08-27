@@ -439,6 +439,21 @@ namespace Izmi
 
             GUILayout.Label("СОСТОЯНИЕ МИРА: " + globalOutbreak.WorldCondition, titleStyle);
             GUILayout.Label(
+                "МЕЖДУНАРОДНОЕ СОТРУДНИЧЕСТВО: " + globalOutbreak.GlobalCooperation + "%",
+                titleStyle);
+            DrawCommandBar(globalOutbreak.GlobalCooperation / 100f);
+            GUILayout.Label(globalOutbreak.CooperationStatus, eventTextStyle);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("ПРОВЕСТИ САММИТ\n24", buttonStyle, GUILayout.Height(46f)))
+            {
+                globalOutbreak.HoldInternationalSummit();
+            }
+            if (GUILayout.Button("ИЗЪЯТЬ ЗАПАСЫ\n18", buttonStyle, GUILayout.Height(46f)))
+            {
+                globalOutbreak.RequisitionForeignStockpiles();
+            }
+            GUILayout.EndHorizontal();
+            GUILayout.Label(
                 "ПОСЕЛЕНИЯ: " + globalOutbreak.SafeSettlementCount +
                 "   ПОД ЗАЩИТОЙ: " + globalOutbreak.ProtectedPopulation.ToString("N0"),
                 titleStyle);
