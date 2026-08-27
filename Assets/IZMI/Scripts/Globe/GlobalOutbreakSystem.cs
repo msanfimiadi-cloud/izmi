@@ -64,6 +64,7 @@ namespace Izmi
         private float medicalSupply = 74f;
         private float security = 68f;
         private float publicTrust = 76f;
+        private float fuelSupply = 72f;
         private int safeSettlementCount;
         private long protectedPopulation;
         private bool offlineReportVisible;
@@ -103,12 +104,13 @@ namespace Izmi
             ? "ПРИОРИТЕТ МИРНЫМ"
             : rationDoctrine == 2 ? "ПРИОРИТЕТ АРМИИ"
             : rationDoctrine == 3 ? "ПРИОРИТЕТ ПОСЕЛЕНИЯМ" : "РАВНЫЕ ПАЙКИ";
-        public bool AreFlightsRestricted => travelRestrictionTimer > 0f;
+        public bool AreFlightsRestricted => travelRestrictionTimer > 0f || fuelSupply < 8f;
         public bool HasCrisisEvent => crisisEventVisible;
         public int FoodSupply => Mathf.RoundToInt(foodSupply);
         public int MedicalSupply => Mathf.RoundToInt(medicalSupply);
         public int Security => Mathf.RoundToInt(security);
         public int PublicTrust => Mathf.RoundToInt(publicTrust);
+        public int FuelSupply => Mathf.RoundToInt(fuelSupply);
         public int SafeSettlementCount => safeSettlementCount;
         public long ProtectedPopulation => protectedPopulation;
         public long ShelterCapacity => 100000L +
@@ -500,6 +502,8 @@ namespace Izmi
             medicalSupply -= (InfectedRegions * 0.14f + crisisPressure * 1.8f) * difficultyPressure;
             security -= (InfectedRegions * 0.1f + crisisPressure * 1.25f) * difficultyPressure;
             publicTrust -= (InfectedRegions * 0.08f + crisisPressure * 1.4f) * difficultyPressure;
+            fuelSupply -= (0.12f + InfectedRegions * 0.1f +
+                safeSettlementCount * 0.05f) * difficultyPressure;
             var displacementRatio = TotalPopulation > 0L
                 ? TotalDisplaced / (double)TotalPopulation
                 : 0d;
@@ -584,6 +588,14 @@ namespace Izmi
             medicalSupply = Mathf.Clamp(medicalSupply, 0f, 100f);
             security = Mathf.Clamp(security, 0f, 100f);
             publicTrust = Mathf.Clamp(publicTrust, 0f, 100f);
+            fuelSupply = Mathf.Clamp(fuelSupply, 0f, 100f);
+        }
+
+        private bool HasFuel(float amount)
+        {
+            if (fuelSupply >= amount) return true;
+            SetResponseMessage("НЕ ХВАТАЕТ ТОПЛИВА ДЛЯ ЭТОЙ ОПЕРАЦИИ");
+            return false;
         }
 
         private bool HasResources(float food, float medicine, float order, float trust)
@@ -745,10 +757,24 @@ namespace Izmi
             return true;
         }
 
+        public bool RestartFuelProduction()
+        {
+            if (!HasResources(6f, 0f, 8f, 0f) || !SpendResponsePoints(27f)) return false;
+            foodSupply -= 6f;
+            security -= 8f;
+            fuelSupply = Mathf.Min(100f, fuelSupply + 22f);
+            publicTrust = Mathf.Min(100f, publicTrust + 1f);
+            SetResponseMessage("ТОПЛИВНЫЕ ТЕРМИНАЛЫ ВОЗОБНОВИЛИ РАБОТУ");
+            AddNews("Инженерные группы перезапустили уцелевшие топливные терминалы.");
+            SavePolicyState();
+            return true;
+        }
+
         public bool RestoreSelectedRegionalInfrastructure()
         {
             if (SelectedRegion == null ||
                 !HasResources(5f, 3f, 6f, 0f) ||
+                !HasFuel(7f) ||
                 !SpendResponsePoints(24f))
             {
                 return false;
@@ -757,6 +783,7 @@ namespace Izmi
             foodSupply -= 5f;
             medicalSupply -= 3f;
             security -= 6f;
+            fuelSupply -= 7f;
             SelectedRegion.Infrastructure = Mathf.Min(
                 100f,
                 SelectedRegion.Infrastructure + 28f);
@@ -776,9 +803,10 @@ namespace Izmi
 
         public bool ExpandEmergencyCamps()
         {
-            if (!HasResources(6f, 0f, 4f, 0f) || !SpendResponsePoints(20f)) return false;
+            if (!HasResources(6f, 0f, 4f, 0f) || !HasFuel(3f) || !SpendResponsePoints(20f)) return false;
             foodSupply -= 6f;
             security -= 4f;
+            fuelSupply -= 3f;
             emergencyCampModules++;
             shelterReadiness = Mathf.Min(100f, shelterReadiness + 3f);
             campHealth = Mathf.Min(100f, campHealth + 2f);
@@ -808,7 +836,7 @@ namespace Izmi
                 SetResponseMessage("В РЕГИОНЕ НЕТ ЛЮДЕЙ, ОЖИДАЮЩИХ ЭВАКУАЦИИ");
                 return false;
             }
-            if (!HasResources(7f, 3f, 5f, 0f) || !SpendResponsePoints(26f)) return false;
+            if (!HasResources(7f, 3f, 5f, 0f) || !HasFuel(6f) || !SpendResponsePoints(26f)) return false;
 
             var rescued = Math.Min(
                 SelectedRegion.Displaced,
@@ -816,6 +844,7 @@ namespace Izmi
             foodSupply -= 7f;
             medicalSupply -= 3f;
             security -= 5f;
+            fuelSupply -= 6f;
             SelectedRegion.Displaced -= rescued;
             protectedPopulation = Math.Min(
                 LivingPopulation,
@@ -906,10 +935,11 @@ namespace Izmi
 
         public bool SendRegionalAid()
         {
-            if (SelectedRegion == null || !HasResources(8f, 6f, 0f, 0f) || !SpendResponsePoints(24f)) return false;
+            if (SelectedRegion == null || !HasResources(8f, 6f, 0f, 0f) || !HasFuel(5f) || !SpendResponsePoints(24f)) return false;
             var deliveryFactor = Mathf.Clamp01(1f - SelectedRegion.SupplyDisruption / 125f);
             foodSupply -= 8f;
             medicalSupply -= 6f;
+            fuelSupply -= 5f;
             SelectedRegion.ReliefStock = Mathf.Min(100f, SelectedRegion.ReliefStock + 32f * deliveryFactor);
             SelectedRegion.SupplyDisruption = Mathf.Min(100f, SelectedRegion.SupplyDisruption + 8f);
             publicTrust = Mathf.Min(100f, publicTrust + 2f * deliveryFactor);
@@ -934,8 +964,9 @@ namespace Izmi
 
         public bool OrganizeFoodConvoys()
         {
-            if (!HasResources(0f, 0f, 5f, 0f) || !SpendResponsePoints(22f)) return false;
+            if (!HasResources(0f, 0f, 5f, 0f) || !HasFuel(6f) || !SpendResponsePoints(22f)) return false;
             security -= 5f;
+            fuelSupply -= 6f;
             foodSupply = Mathf.Min(100f, foodSupply + 18f);
             publicTrust = Mathf.Min(100f, publicTrust + 2f);
             SetResponseMessage("ПРОДОВОЛЬСТВЕННЫЕ КОНВОИ ДОСТАВИЛИ ЗАПАСЫ");
@@ -1129,6 +1160,7 @@ namespace Izmi
             medicalSupply = PlayerPrefs.GetFloat("IZMI.Resource.Medicine", 74f);
             security = PlayerPrefs.GetFloat("IZMI.Resource.Security", 68f);
             publicTrust = PlayerPrefs.GetFloat("IZMI.Resource.Trust", 76f);
+            fuelSupply = PlayerPrefs.GetFloat("IZMI.Resource.Fuel", 72f);
             safeSettlementCount = PlayerPrefs.GetInt("IZMI.Survival.Settlements", 0);
             long.TryParse(
                 PlayerPrefs.GetString("IZMI.Survival.Protected", "0"),
@@ -1154,6 +1186,7 @@ namespace Izmi
             PlayerPrefs.SetFloat("IZMI.Resource.Medicine", medicalSupply);
             PlayerPrefs.SetFloat("IZMI.Resource.Security", security);
             PlayerPrefs.SetFloat("IZMI.Resource.Trust", publicTrust);
+            PlayerPrefs.SetFloat("IZMI.Resource.Fuel", fuelSupply);
             PlayerPrefs.SetInt("IZMI.Survival.Settlements", safeSettlementCount);
             PlayerPrefs.SetInt("IZMI.Policy.Armament", armamentDoctrine);
             PlayerPrefs.SetInt("IZMI.Policy.Rations", rationDoctrine);
