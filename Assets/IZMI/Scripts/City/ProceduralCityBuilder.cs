@@ -150,51 +150,181 @@ namespace Izmi
 
         private static void CreateTower(Transform root, Vector3 center)
         {
-            var height = Random.Range(4.2f, 11.5f) * towerHeightScale;
-            var footprintX = Random.Range(2.5f, 3.45f);
-            var footprintZ = Random.Range(2.5f, 3.45f);
+            var height = Random.Range(6.5f, 15.5f) * towerHeightScale;
+            var footprintX = Random.Range(2.8f, 4.1f);
+            var footprintZ = Random.Range(2.8f, 4.1f);
             var material = buildingMaterials[Random.Range(0, buildingMaterials.Length)];
+            var style = Random.Range(0, 4);
 
-            CreateCube("Office Tower", root, new Vector3(center.x, height * 0.5f + 0.14f, center.z),
-                new Vector3(footprintX, height, footprintZ), material);
+            CreateCube("Tower Podium", root,
+                center + Vector3.up * 0.65f,
+                new Vector3(footprintX + 0.55f, 1.05f, footprintZ + 0.55f),
+                buildingMaterials[Random.Range(0, buildingMaterials.Length)]);
 
-            var windowRows = Mathf.Clamp(Mathf.FloorToInt(height / 1.45f), 2, 7);
-            for (var row = 0; row < windowRows; row++)
+            if (style == 0)
             {
-                var y = 1f + row * 1.35f;
-                if (y >= height - 0.35f) break;
+                var lowerHeight = height * 0.58f;
+                CreateCube("Setback Tower Lower", root,
+                    center + Vector3.up * (1.05f + lowerHeight * 0.5f),
+                    new Vector3(footprintX, lowerHeight, footprintZ), material);
+                CreateCube("Setback Tower Upper", root,
+                    center + Vector3.up * (1.05f + lowerHeight + (height - lowerHeight) * 0.5f),
+                    new Vector3(footprintX * 0.72f, height - lowerHeight, footprintZ * 0.72f),
+                    buildingMaterials[2]);
+            }
+            else if (style == 1)
+            {
+                CreateCylinder("Rounded Glass Tower", root,
+                    center + Vector3.up * (1.05f + height * 0.5f),
+                    new Vector3(footprintX * 0.52f, height * 0.5f, footprintZ * 0.52f),
+                    buildingMaterials[2]);
+                CreateCylinder("Tower Crown", root,
+                    center + Vector3.up * (height + 1.35f),
+                    new Vector3(footprintX * 0.36f, 0.3f, footprintZ * 0.36f),
+                    windowMaterial);
+            }
+            else if (style == 2)
+            {
+                var wingWidth = footprintX * 0.44f;
                 for (var side = -1; side <= 1; side += 2)
                 {
-                    CreateCube("Lit Windows", root,
-                        new Vector3(center.x + side * (footprintX * 0.505f), y, center.z),
-                        new Vector3(0.025f, 0.38f, footprintZ * 0.62f), windowMaterial);
+                    var wingHeight = height * (side < 0 ? 0.82f : 1f);
+                    CreateCube("Twin Tower Wing", root,
+                        center + new Vector3(side * footprintX * 0.27f,
+                            1.05f + wingHeight * 0.5f, 0f),
+                        new Vector3(wingWidth, wingHeight, footprintZ),
+                        side < 0 ? material : buildingMaterials[2]);
+                }
+                CreateCube("Sky Bridge", root,
+                    center + Vector3.up * (height * 0.52f),
+                    new Vector3(footprintX * 0.7f, 0.35f, footprintZ * 0.65f),
+                    windowMaterial);
+            }
+            else
+            {
+                var levels = 4;
+                for (var level = 0; level < levels; level++)
+                {
+                    var levelHeight = height / levels;
+                    var setback = 1f - level * 0.13f;
+                    CreateCube("Terraced Tower", root,
+                        center + new Vector3(
+                            level * 0.11f,
+                            1.05f + levelHeight * (level + 0.5f),
+                            level * 0.08f),
+                        new Vector3(
+                            footprintX * setback,
+                            levelHeight - 0.08f,
+                            footprintZ * setback),
+                        level % 2 == 0 ? material : buildingMaterials[3]);
                 }
             }
 
-            if (height > 7f)
+            AddFacadeBands(root, center, footprintX, footprintZ, height);
+            CreateCube("Rooftop Plant", root,
+                center + Vector3.up * (height + 1.45f),
+                new Vector3(footprintX * 0.36f, 0.48f, footprintZ * 0.36f),
+                roadMaterial);
+        }
+
+        private static void AddFacadeBands(
+            Transform root,
+            Vector3 center,
+            float footprintX,
+            float footprintZ,
+            float height)
+        {
+            var rows = Mathf.Clamp(Mathf.FloorToInt(height / 1.5f), 3, 10);
+            for (var row = 0; row < rows; row++)
             {
-                CreateCube("Rooftop Plant", root, new Vector3(center.x, height + 0.38f, center.z),
-                    new Vector3(footprintX * 0.46f, 0.62f, footprintZ * 0.46f), roadMaterial);
-                CreateCube("Antenna", root, new Vector3(center.x, height + 1.15f, center.z),
-                    new Vector3(0.08f, 1.25f, 0.08f), laneMaterial);
+                var y = 1.45f + row * 1.35f;
+                if (y > height) break;
+                CreateCube("Facade Window Band", root,
+                    center + new Vector3(0f, y, -footprintZ * 0.505f),
+                    new Vector3(footprintX * 0.72f, 0.22f, 0.035f),
+                    windowMaterial);
+                CreateCube("Facade Window Band", root,
+                    center + new Vector3(footprintX * 0.505f, y, 0f),
+                    new Vector3(0.035f, 0.22f, footprintZ * 0.72f),
+                    windowMaterial);
             }
         }
 
         private static void CreateResidentialBlock(Transform root, Vector3 center)
         {
-            var rotation = Random.value > 0.5f;
-            for (var index = -1; index <= 1; index += 2)
+            var alongX = Random.value > 0.5f;
+            for (var index = -1; index <= 1; index++)
             {
-                var height = Random.Range(2.5f, 5.2f);
-                var offset = rotation
-                    ? new Vector3(index * 1.05f, 0f, 0f)
-                    : new Vector3(0f, 0f, index * 1.05f);
-                var scale = rotation
-                    ? new Vector3(1.55f, height, 3.25f)
-                    : new Vector3(3.25f, height, 1.55f);
-                CreateCube("Apartment", root, center + offset + Vector3.up * (height * 0.5f + 0.14f),
-                    scale, buildingMaterials[1]);
+                var height = Random.Range(3.4f, 6.4f);
+                var offset = alongX
+                    ? new Vector3(index * 1.35f, 0f, 0f)
+                    : new Vector3(0f, 0f, index * 1.35f);
+                var scale = alongX
+                    ? new Vector3(1.18f, height, 3.45f)
+                    : new Vector3(3.45f, height, 1.18f);
+                var buildingCenter = center + offset;
+
+                CreateCube("Residential Building", root,
+                    buildingCenter + Vector3.up * (height * 0.5f + 0.14f),
+                    scale,
+                    buildingMaterials[index == 0 ? 3 : 1]);
+
+                for (var floor = 1; floor < Mathf.FloorToInt(height); floor++)
+                {
+                    var balconyScale = alongX
+                        ? new Vector3(0.9f, 0.08f, 3.65f)
+                        : new Vector3(3.65f, 0.08f, 0.9f);
+                    CreateCube("Residential Balcony", root,
+                        buildingCenter + Vector3.up * (floor + 0.25f),
+                        balconyScale,
+                        sidewalkMaterial);
+                }
+
+                CreatePitchedRoof(root, buildingCenter, scale, height + 0.2f);
             }
+        }
+
+        private static void CreatePitchedRoof(
+            Transform root,
+            Vector3 center,
+            Vector3 buildingScale,
+            float y)
+        {
+            var alongX = buildingScale.x < buildingScale.z;
+            for (var side = -1; side <= 1; side += 2)
+            {
+                var roof = CreateCube("Pitched Roof", root,
+                    center + new Vector3(
+                        alongX ? side * 0.26f : 0f,
+                        y + 0.22f,
+                        alongX ? 0f : side * 0.26f),
+                    alongX
+                        ? new Vector3(0.72f, 0.12f, buildingScale.z + 0.2f)
+                        : new Vector3(buildingScale.x + 0.2f, 0.12f, 0.72f),
+                    roadMaterial);
+                roof.transform.rotation = Quaternion.Euler(
+                    alongX ? 0f : side * 24f,
+                    0f,
+                    alongX ? side * 24f : 0f);
+            }
+        }
+
+        private static GameObject CreateCylinder(
+            string objectName,
+            Transform parent,
+            Vector3 position,
+            Vector3 scale,
+            Material material)
+        {
+            var cylinder = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            cylinder.name = objectName;
+            cylinder.transform.SetParent(parent, false);
+            cylinder.transform.position = position;
+            cylinder.transform.localScale = scale;
+            cylinder.GetComponent<Renderer>().sharedMaterial = material;
+            var collider = cylinder.GetComponent<Collider>();
+            if (collider != null) Object.Destroy(collider);
+            return cylinder;
         }
 
         private static void CreatePark(Transform root, Vector3 center)
