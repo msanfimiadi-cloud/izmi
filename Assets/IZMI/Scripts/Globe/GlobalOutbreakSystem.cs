@@ -65,6 +65,7 @@ namespace Izmi
         private float security = 68f;
         private float publicTrust = 76f;
         private float fuelSupply = 72f;
+        private float globalCooperation = 66f;
         private int safeSettlementCount;
         private long protectedPopulation;
         private bool offlineReportVisible;
@@ -111,7 +112,11 @@ namespace Izmi
         public int Security => Mathf.RoundToInt(security);
         public int PublicTrust => Mathf.RoundToInt(publicTrust);
         public int FuelSupply => Mathf.RoundToInt(fuelSupply);
-        public int SafeSettlementCount => safeSettlementCount;
+        public int GlobalCooperation => Mathf.RoundToInt(globalCooperation);
+        public string CooperationStatus => globalCooperation < 15f ? "КОАЛИЦИЯ РАСПАЛАСЬ"
+            : globalCooperation < 40f ? "СТРАНЫ ДЕЙСТВУЮТ ОТДЕЛЬНО"
+            : globalCooperation < 70f ? "ХРУПКОЕ СОТРУДНИЧЕСТВО"
+            : "ЕДИНЫЙ МЕЖДУНАРОДНЫЙ ОТВЕТ";        public int SafeSettlementCount => safeSettlementCount;
         public long ProtectedPopulation => protectedPopulation;
         public long ShelterCapacity => 100000L +
             safeSettlementCount * 500000L +
@@ -210,7 +215,7 @@ namespace Izmi
         {
             get
             {
-                var weakest = Mathf.Min(fuelSupply, Mathf.Min(Mathf.Min(foodSupply, medicalSupply), Mathf.Min(security, publicTrust)));
+                var weakest = Mathf.Min(globalCooperation, Mathf.Min(fuelSupply, Mathf.Min(Mathf.Min(foodSupply, medicalSupply), Mathf.Min(security, publicTrust))));
                 if (weakest < 15f) return "КОЛЛАПС";
                 if (weakest < 35f) return "КРИТИЧЕСКОЕ";
                 if (weakest < 60f) return "НАПРЯЖЁННОЕ";
@@ -502,6 +507,18 @@ namespace Izmi
             medicalSupply -= (InfectedRegions * 0.14f + crisisPressure * 1.8f) * difficultyPressure;
             security -= (InfectedRegions * 0.1f + crisisPressure * 1.25f) * difficultyPressure;
             publicTrust -= (InfectedRegions * 0.08f + crisisPressure * 1.4f) * difficultyPressure;
+            var cooperationChange = (publicTrust - 50f) * 0.006f;
+            if (armamentDoctrine == 2) cooperationChange -= 0.18f;
+            if (!string.IsNullOrEmpty(priorityRegionName)) cooperationChange -= 0.08f;
+            if (globalCooperation > 70f)
+            {
+                cureResearch = Mathf.Min(100f, cureResearch + 0.06f);
+                medicalSupply = Mathf.Min(100f, medicalSupply + 0.08f);
+            }
+            globalCooperation = Mathf.Clamp(
+                globalCooperation + cooperationChange,
+                0f,
+                100f);
             fuelSupply -= (0.12f + InfectedRegions * 0.1f +
                 safeSettlementCount * 0.05f) * difficultyPressure;
             var displacementRatio = TotalPopulation > 0L
@@ -757,6 +774,35 @@ namespace Izmi
             return true;
         }
 
+        public bool HoldInternationalSummit()
+        {
+            if (!HasResources(4f, 0f, 0f, 8f) || !SpendResponsePoints(24f)) return false;
+            foodSupply -= 4f;
+            publicTrust -= 8f;
+            globalCooperation = Mathf.Min(100f, globalCooperation + 24f);
+            responsePoints = Mathf.Min(100f, responsePoints + 4f);
+            SetResponseMessage("СТРАНЫ СОГЛАСОВАЛИ СОВМЕСТНЫЙ ПЛАН");
+            AddNews("Международный саммит восстановил координацию между странами.");
+            SavePolicyState();
+            return true;
+        }
+
+        public bool RequisitionForeignStockpiles()
+        {
+            if (!SpendResponsePoints(18f)) return false;
+            foodSupply = Mathf.Min(100f, foodSupply + 12f);
+            medicalSupply = Mathf.Min(100f, medicalSupply + 9f);
+            fuelSupply = Mathf.Min(100f, fuelSupply + 10f);
+            security = Mathf.Min(100f, security + 3f);
+            publicTrust = Mathf.Max(0f, publicTrust - 7f);
+            globalCooperation = Mathf.Max(0f, globalCooperation - 22f);
+            warReadiness = Mathf.Min(100f, warReadiness + 3f);
+            SetResponseMessage("ЗАПАСЫ ИЗЪЯТЫ ДЛЯ НУЖД КРИЗИСНОГО СОВЕТА");
+            AddNews("Совет принудительно перераспределил национальные запасы.");
+            SavePolicyState();
+            return true;
+        }
+
         public bool RestartFuelProduction()
         {
             if (!HasResources(6f, 0f, 8f, 0f) || !SpendResponsePoints(27f)) return false;
@@ -936,7 +982,9 @@ namespace Izmi
         public bool SendRegionalAid()
         {
             if (SelectedRegion == null || !HasResources(8f, 6f, 0f, 0f) || !HasFuel(5f) || !SpendResponsePoints(24f)) return false;
-            var deliveryFactor = Mathf.Clamp01(1f - SelectedRegion.SupplyDisruption / 125f);
+            var cooperationFactor = Mathf.Lerp(0.55f, 1f, globalCooperation / 100f);
+            var deliveryFactor = Mathf.Clamp01(
+                (1f - SelectedRegion.SupplyDisruption / 125f) * cooperationFactor);
             foodSupply -= 8f;
             medicalSupply -= 6f;
             fuelSupply -= 5f;
@@ -1161,6 +1209,7 @@ namespace Izmi
             security = PlayerPrefs.GetFloat("IZMI.Resource.Security", 68f);
             publicTrust = PlayerPrefs.GetFloat("IZMI.Resource.Trust", 76f);
             fuelSupply = PlayerPrefs.GetFloat("IZMI.Resource.Fuel", 72f);
+            globalCooperation = PlayerPrefs.GetFloat("IZMI.Policy.Cooperation", 66f);
             safeSettlementCount = PlayerPrefs.GetInt("IZMI.Survival.Settlements", 0);
             long.TryParse(
                 PlayerPrefs.GetString("IZMI.Survival.Protected", "0"),
@@ -1187,6 +1236,7 @@ namespace Izmi
             PlayerPrefs.SetFloat("IZMI.Resource.Security", security);
             PlayerPrefs.SetFloat("IZMI.Resource.Trust", publicTrust);
             PlayerPrefs.SetFloat("IZMI.Resource.Fuel", fuelSupply);
+            PlayerPrefs.SetFloat("IZMI.Policy.Cooperation", globalCooperation);
             PlayerPrefs.SetInt("IZMI.Survival.Settlements", safeSettlementCount);
             PlayerPrefs.SetInt("IZMI.Policy.Armament", armamentDoctrine);
             PlayerPrefs.SetInt("IZMI.Policy.Rations", rationDoctrine);
