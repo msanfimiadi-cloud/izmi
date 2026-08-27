@@ -459,6 +459,22 @@ namespace Izmi
             GUILayout.Label(globalOutbreak.ResponseMessage, titleStyle);
             GUILayout.Space(8f);
 
+            GUILayout.Label("РЕГИОНАЛЬНАЯ ЛОГИСТИКА", titleStyle);
+            GUILayout.Label(
+                "ЗАПАС ПОМОЩИ: " + globalOutbreak.SelectedReliefStock + "%   " +
+                "РИСК СРЫВА: " + globalOutbreak.SelectedSupplyDisruption + "%",
+                eventTextStyle);
+            GUILayout.Label(globalOutbreak.SelectedSupplyStatus, titleStyle);
+            if (GUILayout.Button("ДОСТАВИТЬ ПОМОЩЬ В РЕГИОН  •  24", buttonStyle, GUILayout.Height(38f)))
+            {
+                globalOutbreak.SendRegionalAid();
+            }
+            if (GUILayout.Button("ВЗЯТЬ МАРШРУТ ПОД ОХРАНУ  •  18", buttonStyle, GUILayout.Height(38f)))
+            {
+                globalOutbreak.SecureSelectedSupplyRoute();
+            }
+            GUILayout.Space(8f);
+
             GUILayout.Label("СНАБЖЕНИЕ И ИНФРАСТРУКТУРА", titleStyle);
             if (GUILayout.Button("ПРОДОВОЛЬСТВЕННЫЕ КОНВОИ  •  22", buttonStyle, GUILayout.Height(38f)))
             {
