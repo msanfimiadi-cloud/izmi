@@ -27,6 +27,7 @@ namespace Izmi
             public Transform Marker;
             public Renderer MarkerRenderer;
             public Color BaseColor;
+            public Vector3 BaseScale;
         }
 
         private sealed class Flight
@@ -1665,7 +1666,8 @@ namespace Izmi
                 Infrastructure = infected > 0d ? 72f : 90f,
                 Marker = marker,
                 MarkerRenderer = renderer,
-                BaseColor = new Color(0.2f, 0.85f, 1f)
+                BaseColor = new Color(0.12f, 0.78f, 1f),
+                BaseScale = marker.localScale
             };
             if (renderer != null)
             {
@@ -1914,6 +1916,15 @@ namespace Izmi
                     continue;
                 }
 
+                var selectedScale = region == SelectedRegion ? 1.65f : 1f;
+                var pulse = region.Infected >= 1d
+                    ? 1f + Mathf.Sin(Time.unscaledTime * 3.2f) * 0.09f
+                    : 1f;
+                region.Marker.localScale = Vector3.Lerp(
+                    region.Marker.localScale,
+                    region.BaseScale * selectedScale * pulse,
+                    1f - Mathf.Exp(-9f * Time.unscaledDeltaTime));
+
                 var ratio = region.Infected / Math.Max(1d, region.Population);
                 if (ratio >= 0.01d)
                 {
@@ -1966,12 +1977,12 @@ namespace Izmi
 
         private void CreateMaterials()
         {
-            healthyMaterial = CreateEmissive("Stable Region", new Color(0.08f, 0.62f, 0.92f), 1.5f);
-            warningMaterial = CreateEmissive("Affected Region", new Color(1f, 0.36f, 0.035f), 2f);
-            criticalMaterial = CreateEmissive("Critical Region", new Color(0.95f, 0.025f, 0.015f), 2.4f);
-            reservoirMaterial = CreateEmissive("Environmental Reservoir", new Color(0.62f, 0.12f, 0.92f), 2f);
-            routeMaterial = CreateEmissive("Air Route", new Color(0.08f, 0.38f, 0.62f, 0.42f), 0.8f);
-            flightMaterial = CreateEmissive("Aircraft Light", new Color(0.75f, 0.94f, 1f), 2.2f);
+            healthyMaterial = CreateEmissive("Stable Region", new Color(0.05f, 0.72f, 0.95f), 1.65f);
+            warningMaterial = CreateEmissive("Affected Region", new Color(0.48f, 0.18f, 0.92f), 2.1f);
+            criticalMaterial = CreateEmissive("Critical Region", new Color(0.92f, 0.08f, 0.58f), 2.45f);
+            reservoirMaterial = CreateEmissive("Environmental Reservoir", new Color(0.02f, 0.88f, 0.68f), 2.05f);
+            routeMaterial = CreateEmissive("Air Route", new Color(0.06f, 0.48f, 0.78f, 0.42f), 0.9f);
+            flightMaterial = CreateEmissive("Aircraft Light", new Color(0.32f, 0.88f, 1f), 2.2f);
         }
 
         private static Material CreateEmissive(string materialName, Color color, float intensity)
