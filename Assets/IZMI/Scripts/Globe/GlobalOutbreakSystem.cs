@@ -72,6 +72,7 @@ namespace Izmi
         private float mutationPressure;
         private int variantLevel;
         private float vaccineStock;
+        private float vaccineAcceptance = 72f;
         private int safeSettlementCount;
         private long protectedPopulation;
         private bool offlineReportVisible;
@@ -144,7 +145,12 @@ namespace Izmi
             : Mathf.RoundToInt(SelectedRegion.Vaccination);
         public string VaccineStatus => cureResearch < 35f ? "ТЕХНОЛОГИЯ ЕЩЁ НЕ ГОТОВА"
             : vaccineStock < 10f ? "НЕТ ГОТОВЫХ ПАРТИЙ"
-            : "ВАКЦИНА ГОТОВА К РАСПРЕДЕЛЕНИЮ";        public int SafeSettlementCount => safeSettlementCount;
+            : "ВАКЦИНА ГОТОВА К РАСПРЕДЕЛЕНИЮ";
+        public int VaccineAcceptance => Mathf.RoundToInt(vaccineAcceptance);
+        public string VaccineAcceptanceStatus => vaccineAcceptance < 25f ? "МАССОВЫЙ ОТКАЗ"
+            : vaccineAcceptance < 50f ? "СИЛЬНОЕ НЕДОВЕРИЕ"
+            : vaccineAcceptance < 75f ? "ОСТОРОЖНОЕ СОГЛАСИЕ"
+            : "ВЫСОКАЯ ГОТОВНОСТЬ";        public int SafeSettlementCount => safeSettlementCount;
         public long ProtectedPopulation => protectedPopulation;
         public long ShelterCapacity => 100000L +
             safeSettlementCount * 500000L +
@@ -556,6 +562,16 @@ namespace Izmi
                 Mathf.Max(0f, 45f - publicTrust) * 0.012f -
                 security * 0.0025f;
             blackMarketActivity = Mathf.Clamp(blackMarketActivity, 0f, 100f);
+            var acceptanceTarget = Mathf.Clamp(
+                publicTrust * 0.82f +
+                globalCooperation * 0.18f -
+                blackMarketActivity * 0.22f,
+                0f,
+                100f);
+            vaccineAcceptance = Mathf.MoveTowards(
+                vaccineAcceptance,
+                acceptanceTarget,
+                0.45f);
             intelligenceCoverage = Mathf.Max(
                 0f,
                 intelligenceCoverage - 0.22f - blackMarketActivity * 0.0015f);
@@ -849,6 +865,48 @@ namespace Izmi
             return true;
         }
 
+        public bool RunVaccinationCampaign()
+        {
+            if (!HasResources(2f, 3f, 0f, 0f) || !SpendResponsePoints(16f)) return false;
+            foodSupply -= 2f;
+            medicalSupply -= 3f;
+            vaccineAcceptance = Mathf.Min(100f, vaccineAcceptance + 20f);
+            publicTrust = Mathf.Min(100f, publicTrust + 4f);
+            SetResponseMessage("ВРАЧИ НАЧАЛИ ОТКРЫТУЮ ИНФОРМАЦИОННУЮ КАМПАНИЮ");
+            AddNews("Медицинские службы опубликовали данные о безопасности вакцинации.");
+            SavePolicyState();
+            return true;
+        }
+
+        public bool EnforceSelectedVaccination()
+        {
+            if (SelectedRegion == null || cureResearch < 50f)
+            {
+                SetResponseMessage("ПРИНУДИТЕЛЬНАЯ ВАКЦИНАЦИЯ ПОКА НЕДОСТУПНА");
+                return false;
+            }
+            if (vaccineStock < 10f || !HasFuel(2f) ||
+                !HasResources(0f, 0f, 6f, 0f) ||
+                !SpendResponsePoints(15f))
+            {
+                return false;
+            }
+
+            vaccineStock -= 10f;
+            fuelSupply -= 2f;
+            security -= 6f;
+            SelectedRegion.Vaccination = Mathf.Min(100f, SelectedRegion.Vaccination + 28f);
+            SelectedRegion.Stability = Mathf.Max(0f, SelectedRegion.Stability - 4f);
+            publicTrust = Mathf.Max(0f, publicTrust - 8f);
+            vaccineAcceptance = Mathf.Max(0f, vaccineAcceptance - 7f);
+            warReadiness = Mathf.Min(100f, warReadiness + 2f);
+            SetResponseMessage("В РЕГИОНЕ ВВЕДЕНА ОБЯЗАТЕЛЬНАЯ ВАКЦИНАЦИЯ");
+            AddNews("В регионе «" + RegionDisplayName(SelectedRegion.Name) +
+                "» вакцинация стала обязательной.");
+            SaveRegionalState();
+            return true;
+        }
+
         public bool ProduceVaccineBatches()
         {
             if (cureResearch < 35f)
@@ -889,9 +947,10 @@ namespace Izmi
 
             vaccineStock -= 15f;
             fuelSupply -= 3f;
+            var voluntaryCoverage = Mathf.Lerp(0.4f, 1f, vaccineAcceptance / 100f);
             SelectedRegion.Vaccination = Mathf.Min(
                 100f,
-                SelectedRegion.Vaccination + 24f);
+                SelectedRegion.Vaccination + 24f * voluntaryCoverage);
             mutationPressure = Mathf.Max(0f, mutationPressure - 5f);
             publicTrust = Mathf.Min(100f, publicTrust + 2f);
             SetResponseMessage("В РЕГИОНЕ НАЧАТА МАССОВАЯ ВАКЦИНАЦИЯ");
@@ -1405,6 +1464,7 @@ namespace Izmi
             mutationPressure = PlayerPrefs.GetFloat("IZMI.Disease.MutationPressure", 0f);
             variantLevel = PlayerPrefs.GetInt("IZMI.Disease.VariantLevel", 0);
             vaccineStock = PlayerPrefs.GetFloat("IZMI.Disease.VaccineStock", 0f);
+            vaccineAcceptance = PlayerPrefs.GetFloat("IZMI.Disease.VaccineAcceptance", 72f);
             safeSettlementCount = PlayerPrefs.GetInt("IZMI.Survival.Settlements", 0);
             long.TryParse(
                 PlayerPrefs.GetString("IZMI.Survival.Protected", "0"),
@@ -1437,6 +1497,7 @@ namespace Izmi
             PlayerPrefs.SetFloat("IZMI.Disease.MutationPressure", mutationPressure);
             PlayerPrefs.SetInt("IZMI.Disease.VariantLevel", variantLevel);
             PlayerPrefs.SetFloat("IZMI.Disease.VaccineStock", vaccineStock);
+            PlayerPrefs.SetFloat("IZMI.Disease.VaccineAcceptance", vaccineAcceptance);
             PlayerPrefs.SetInt("IZMI.Survival.Settlements", safeSettlementCount);
             PlayerPrefs.SetInt("IZMI.Policy.Armament", armamentDoctrine);
             PlayerPrefs.SetInt("IZMI.Policy.Rations", rationDoctrine);
