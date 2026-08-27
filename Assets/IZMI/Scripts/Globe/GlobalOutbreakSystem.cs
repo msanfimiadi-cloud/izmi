@@ -66,6 +66,7 @@ namespace Izmi
         private float publicTrust = 76f;
         private float fuelSupply = 72f;
         private float globalCooperation = 66f;
+        private float blackMarketActivity = 12f;
         private int safeSettlementCount;
         private long protectedPopulation;
         private bool offlineReportVisible;
@@ -116,7 +117,12 @@ namespace Izmi
         public string CooperationStatus => globalCooperation < 15f ? "КОАЛИЦИЯ РАСПАЛАСЬ"
             : globalCooperation < 40f ? "СТРАНЫ ДЕЙСТВУЮТ ОТДЕЛЬНО"
             : globalCooperation < 70f ? "ХРУПКОЕ СОТРУДНИЧЕСТВО"
-            : "ЕДИНЫЙ МЕЖДУНАРОДНЫЙ ОТВЕТ";        public int SafeSettlementCount => safeSettlementCount;
+            : "ЕДИНЫЙ МЕЖДУНАРОДНЫЙ ОТВЕТ";
+        public int BlackMarketActivity => Mathf.RoundToInt(blackMarketActivity);
+        public string BlackMarketStatus => blackMarketActivity >= 80f ? "КОНТРАБАНДА КОНТРОЛИРУЕТ СНАБЖЕНИЕ"
+            : blackMarketActivity >= 50f ? "КРУПНЫЕ ПОДПОЛЬНЫЕ СЕТИ"
+            : blackMarketActivity >= 25f ? "РАСТУЩИЙ НЕЛЕГАЛЬНЫЙ ОБОРОТ"
+            : "ЕДИНИЧНЫЕ СЛУЧАИ";        public int SafeSettlementCount => safeSettlementCount;
         public long ProtectedPopulation => protectedPopulation;
         public long ShelterCapacity => 100000L +
             safeSettlementCount * 500000L +
@@ -519,6 +525,19 @@ namespace Izmi
                 globalCooperation + cooperationChange,
                 0f,
                 100f);
+            var shortage = (
+                100f - foodSupply +
+                100f - medicalSupply +
+                100f - fuelSupply) / 300f;
+            blackMarketActivity +=
+                shortage * 1.1f +
+                Mathf.Max(0f, 45f - publicTrust) * 0.012f -
+                security * 0.0025f;
+            blackMarketActivity = Mathf.Clamp(blackMarketActivity, 0f, 100f);
+            var smugglingLoss = blackMarketActivity / 100f;
+            foodSupply -= smugglingLoss * 0.38f;
+            medicalSupply -= smugglingLoss * 0.3f;
+            fuelSupply -= smugglingLoss * 0.34f;
             fuelSupply -= (0.12f + InfectedRegions * 0.1f +
                 safeSettlementCount * 0.05f) * difficultyPressure;
             var displacementRatio = TotalPopulation > 0L
@@ -770,6 +789,36 @@ namespace Izmi
             SetResponseMessage("ПОРЯДОК РАСПРЕДЕЛЕНИЯ ПРОДОВОЛЬСТВИЯ ИЗМЕНЁН");
             AddNews("Совет изменил порядок распределения продовольствия: " +
                 RationDoctrine.ToLowerInvariant() + ".");
+            SavePolicyState();
+            return true;
+        }
+
+        public bool CrackDownOnBlackMarket()
+        {
+            if (!HasResources(0f, 0f, 10f, 0f) || !SpendResponsePoints(20f)) return false;
+            security -= 10f;
+            blackMarketActivity = Mathf.Max(0f, blackMarketActivity - 30f);
+            foodSupply = Mathf.Min(100f, foodSupply + 5f);
+            medicalSupply = Mathf.Min(100f, medicalSupply + 4f);
+            fuelSupply = Mathf.Min(100f, fuelSupply + 4f);
+            publicTrust = Mathf.Max(0f, publicTrust - 5f);
+            warReadiness = Mathf.Min(100f, warReadiness + 1.5f);
+            SetResponseMessage("СИЛОВЫЕ ГРУППЫ ЛИКВИДИРОВАЛИ СКЛАДЫ КОНТРАБАНДИСТОВ");
+            AddNews("Силовые службы провели массовые рейды против чёрного рынка.");
+            SavePolicyState();
+            return true;
+        }
+
+        public bool RegulateEmergencyTrade()
+        {
+            if (!HasResources(3f, 2f, 0f, 0f) || !SpendResponsePoints(16f)) return false;
+            foodSupply -= 3f;
+            medicalSupply -= 2f;
+            blackMarketActivity = Mathf.Max(0f, blackMarketActivity - 18f);
+            publicTrust = Mathf.Min(100f, publicTrust + 5f);
+            globalCooperation = Mathf.Min(100f, globalCooperation + 2f);
+            SetResponseMessage("КОНТРОЛИРУЕМЫЙ ОБМЕН ВЫВЕДЕН ИЗ ПОДПОЛЬЯ");
+            AddNews("Совет разрешил контролируемый обмен дефицитными товарами.");
             SavePolicyState();
             return true;
         }
@@ -1211,6 +1260,7 @@ namespace Izmi
             publicTrust = PlayerPrefs.GetFloat("IZMI.Resource.Trust", 76f);
             fuelSupply = PlayerPrefs.GetFloat("IZMI.Resource.Fuel", 72f);
             globalCooperation = PlayerPrefs.GetFloat("IZMI.Policy.Cooperation", 66f);
+            blackMarketActivity = PlayerPrefs.GetFloat("IZMI.Resource.BlackMarket", 12f);
             safeSettlementCount = PlayerPrefs.GetInt("IZMI.Survival.Settlements", 0);
             long.TryParse(
                 PlayerPrefs.GetString("IZMI.Survival.Protected", "0"),
@@ -1238,6 +1288,7 @@ namespace Izmi
             PlayerPrefs.SetFloat("IZMI.Resource.Trust", publicTrust);
             PlayerPrefs.SetFloat("IZMI.Resource.Fuel", fuelSupply);
             PlayerPrefs.SetFloat("IZMI.Policy.Cooperation", globalCooperation);
+            PlayerPrefs.SetFloat("IZMI.Resource.BlackMarket", blackMarketActivity);
             PlayerPrefs.SetInt("IZMI.Survival.Settlements", safeSettlementCount);
             PlayerPrefs.SetInt("IZMI.Policy.Armament", armamentDoctrine);
             PlayerPrefs.SetInt("IZMI.Policy.Rations", rationDoctrine);
