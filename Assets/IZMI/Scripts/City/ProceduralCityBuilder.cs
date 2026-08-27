@@ -16,10 +16,13 @@ namespace Izmi
         private static Material[] buildingMaterials;
         private static Material[] vehicleMaterials;
         private static Material pedestrianMaterial;
+        private static Material clothingMaterial;
+        private static Material darkClothingMaterial;
+        private static Material wheelMaterial;
         private static Material infectionMaterial;
         private static int citySeed = 26082026;
-        private static int vehicleCount = 28;
-        private static int pedestrianCount = 44;
+        private static int vehicleCount = 46;
+        private static int pedestrianCount = 86;
         private static float towerHeightScale = 1f;
         private static float parkChance = 0.15f;
         private static float residentialChance = 0.32f;
@@ -53,32 +56,32 @@ namespace Izmi
         private static void CreateGround(Transform root)
         {
             CreateCube("City Ground", root, new Vector3(0f, -0.35f, 0f),
-                new Vector3(46f, 0.6f, 42f), groundMaterial);
-            CreateCube("River", root, new Vector3(19.5f, -0.01f, 0f),
-                new Vector3(7f, 0.1f, 42f), waterMaterial);
+                new Vector3(86f, 0.6f, 78f), groundMaterial);
+            CreateCube("River", root, new Vector3(36f, -0.01f, 0f),
+                new Vector3(10f, 0.1f, 78f), waterMaterial);
 
-            CreateCube("River Walk", root, new Vector3(15.7f, 0.02f, 0f),
-                new Vector3(0.9f, 0.12f, 42f), sidewalkMaterial);
-            for (var z = -17f; z <= 17f; z += 5.5f)
+            CreateCube("River Walk", root, new Vector3(30.6f, 0.02f, 0f),
+                new Vector3(1.2f, 0.12f, 78f), sidewalkMaterial);
+            for (var z = -34f; z <= 34f; z += 6.2f)
             {
-                CreateTree(root, new Vector3(15.65f, 0.1f, z + 1.8f), 0.8f);
+                CreateTree(root, new Vector3(30.55f, 0.1f, z + 1.8f), 0.8f);
             }
         }
 
         private static void CreateRoadNetwork(Transform root)
         {
-            const int roadCount = 7;
-            const float spacing = 5.5f;
-            const float length = 39f;
+            const int roadCount = 11;
+            const float spacing = 6.2f;
+            const float length = 72f;
 
             for (var index = 0; index < roadCount; index++)
             {
-                var coordinate = (index - 3f) * spacing;
+                var coordinate = (index - 5f) * spacing;
                 CreateCube("East West Road", root, new Vector3(0f, 0.01f, coordinate),
                     new Vector3(length, 0.08f, 1.25f), roadMaterial);
                 CreateDashedLine(root, true, coordinate, length);
 
-                if (coordinate < 16f)
+                if (coordinate < 31f)
                 {
                     CreateCube("North South Road", root, new Vector3(coordinate, 0.015f, 0f),
                         new Vector3(1.25f, 0.08f, length), roadMaterial);
@@ -103,30 +106,30 @@ namespace Izmi
 
         private static void CreateCityBlocks(Transform root)
         {
-            const float spacing = 5.5f;
-            for (var x = 0; x < 6; x++)
+            const float spacing = 6.2f;
+            for (var x = 0; x < 10; x++)
             {
-                for (var z = 0; z < 6; z++)
+                for (var z = 0; z < 10; z++)
                 {
                     var center = new Vector3(
-                        (x - 2.5f) * spacing + spacing * 0.5f,
+                        (x - 4.5f) * spacing + spacing * 0.5f,
                         0f,
-                        (z - 2.5f) * spacing + spacing * 0.5f);
-                    if (center.x > 15.2f)
+                        (z - 4.5f) * spacing + spacing * 0.5f);
+                    if (center.x > 30.2f)
                     {
                         continue;
                     }
 
-                    if (center.x < -2.2f && center.z < -2.2f)
+                    if (center.x < -18f && center.z < -18f)
                     {
                         CreateCube("Crisis Response District", root,
                             new Vector3(center.x, 0.07f, center.z),
-                            new Vector3(4.15f, 0.18f, 4.15f), sidewalkMaterial);
+                            new Vector3(4.8f, 0.18f, 4.8f), sidewalkMaterial);
                         continue;
                     }
 
                     CreateCube("Sidewalk Block", root, new Vector3(center.x, 0.06f, center.z),
-                        new Vector3(4.15f, 0.16f, 4.15f), sidewalkMaterial);
+                        new Vector3(4.8f, 0.16f, 4.8f), sidewalkMaterial);
 
                     var districtRoll = Random.value;
                     if (districtRoll < parkChance)
@@ -246,11 +249,11 @@ namespace Izmi
 
         private static void CreateVehicles(Transform root)
         {
-            const float routeLength = 36f;
+            const float routeLength = 69f;
             for (var index = 0; index < vehicleCount; index++)
             {
                 var horizontal = index % 2 == 0;
-                var laneCoordinate = Random.Range(-3, 4) * 5.5f;
+                var laneCoordinate = Random.Range(-5, 6) * 6.2f;
                 var laneOffset = index % 4 < 2 ? -0.3f : 0.3f;
                 Vector3 start;
                 Vector3 end;
@@ -278,6 +281,7 @@ namespace Izmi
                     : new Vector3(0.34f, 0.18f, 0.38f);
                 CreateCube("Car Cabin", vehicleRoot.transform, new Vector3(0f, 0.2f, 0f),
                     cabinScale, windowMaterial);
+                CreateVehicleWheels(vehicleRoot.transform, horizontal);
                 CreateCube("Vehicle Headlights", vehicleRoot.transform, new Vector3(-0.13f, 0.02f, 0.43f),
                     new Vector3(0.09f, 0.09f, 0.035f), laneMaterial);
                 CreateCube("Vehicle Headlights", vehicleRoot.transform, new Vector3(0.13f, 0.02f, 0.43f),
@@ -329,28 +333,96 @@ namespace Izmi
         {
             for (var index = 0; index < pedestrianCount; index++)
             {
-                var pedestrian = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-                pedestrian.name = "Civilian";
-                pedestrian.transform.SetParent(root, false);
-                pedestrian.transform.localScale = new Vector3(0.2f, 0.38f, 0.2f);
-                pedestrian.GetComponent<Renderer>().sharedMaterial = pedestrianMaterial;
+                var pedestrian = CreateHumanoid(
+                    "Civilian",
+                    root,
+                    pedestrianMaterial,
+                    index % 3 == 0 ? darkClothingMaterial : clothingMaterial);
 
-                var center = new Vector3(Random.Range(-14f, 14f), 0f, Random.Range(-14f, 14f));
+                var center = new Vector3(
+                    Random.Range(-30f, 29f),
+                    0f,
+                    Random.Range(-30f, 30f));
                 pedestrian.transform.position = center + Vector3.right;
                 pedestrian.AddComponent<CityPedestrian>().Configure(
-                    center, Random.Range(0.55f, 1.65f), Random.Range(0.42f, 0.86f),
+                    center,
+                    Random.Range(1.2f, 3.4f),
+                    Random.Range(0.65f, 1.05f),
                     Random.Range(0f, Mathf.PI * 2f));
+            }
+        }
+
+        private static GameObject CreateHumanoid(
+            string objectName,
+            Transform parent,
+            Material skin,
+            Material clothing)
+        {
+            var human = new GameObject(objectName);
+            human.transform.SetParent(parent, false);
+
+            var torso = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            torso.name = "Torso";
+            torso.transform.SetParent(human.transform, false);
+            torso.transform.localPosition = new Vector3(0f, 0.92f, 0f);
+            torso.transform.localScale = new Vector3(0.28f, 0.42f, 0.22f);
+            torso.GetComponent<Renderer>().sharedMaterial = clothing;
+
+            var head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            head.name = "Head";
+            head.transform.SetParent(human.transform, false);
+            head.transform.localPosition = new Vector3(0f, 1.62f, 0f);
+            head.transform.localScale = Vector3.one * 0.31f;
+            head.GetComponent<Renderer>().sharedMaterial = skin;
+
+            CreateLimb("Left Arm", human.transform, new Vector3(-0.27f, 1.08f, 0f), skin);
+            CreateLimb("Right Arm", human.transform, new Vector3(0.27f, 1.08f, 0f), skin);
+            CreateLimb("Left Leg", human.transform, new Vector3(-0.12f, 0.36f, 0f), darkClothingMaterial);
+            CreateLimb("Right Leg", human.transform, new Vector3(0.12f, 0.36f, 0f), darkClothingMaterial);
+            return human;
+        }
+
+        private static void CreateLimb(
+            string limbName,
+            Transform parent,
+            Vector3 localPosition,
+            Material material)
+        {
+            var limb = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            limb.name = limbName;
+            limb.transform.SetParent(parent, false);
+            limb.transform.localPosition = localPosition;
+            limb.transform.localScale = new Vector3(0.11f, 0.3f, 0.11f);
+            limb.GetComponent<Renderer>().sharedMaterial = material;
+        }
+
+        private static void CreateVehicleWheels(Transform vehicle, bool horizontal)
+        {
+            for (var side = -1; side <= 1; side += 2)
+            {
+                for (var axle = -1; axle <= 1; axle += 2)
+                {
+                    var wheel = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                    wheel.name = "Wheel";
+                    wheel.transform.SetParent(vehicle, false);
+                    wheel.transform.localScale = new Vector3(0.13f, 0.07f, 0.13f);
+                    wheel.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                    wheel.transform.localPosition = horizontal
+                        ? new Vector3(axle * 0.25f, -0.12f, side * 0.21f)
+                        : new Vector3(side * 0.21f, -0.12f, axle * 0.25f);
+                    wheel.GetComponent<Renderer>().sharedMaterial = wheelMaterial;
+                }
             }
         }
 
         private static Transform CreateInfectionOrigin(Transform root)
         {
-            var origin = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            origin.name = "First Infected";
-            origin.transform.SetParent(root, false);
-            origin.transform.position = new Vector3(2.8f, 0.55f, -2.8f);
-            origin.transform.localScale = Vector3.one * 0.48f;
-            origin.GetComponent<Renderer>().sharedMaterial = infectionMaterial;
+            var origin = CreateHumanoid(
+                "First Infected",
+                root,
+                infectionMaterial,
+                infectionMaterial);
+            origin.transform.position = new Vector3(2.8f, 0f, -2.8f);
             origin.AddComponent<MarkerPulse>();
             return origin.transform;
         }
@@ -369,8 +441,8 @@ namespace Izmi
 
         private static void ConfigureRegion(string regionName)
         {
-            vehicleCount = 28;
-            pedestrianCount = 44;
+            vehicleCount = 46;
+            pedestrianCount = 86;
             towerHeightScale = 1f;
             parkChance = 0.15f;
             residentialChance = 0.32f;
@@ -380,8 +452,8 @@ namespace Izmi
                 case "Europe":
                     cityName = "Берлин";
                     citySeed = 104729;
-                    vehicleCount = 24;
-                    pedestrianCount = 52;
+                    vehicleCount = 42;
+                    pedestrianCount = 92;
                     towerHeightScale = 0.78f;
                     parkChance = 0.24f;
                     residentialChance = 0.52f;
@@ -389,8 +461,8 @@ namespace Izmi
                 case "Asia":
                     cityName = "Токио";
                     citySeed = 130363;
-                    vehicleCount = 38;
-                    pedestrianCount = 66;
+                    vehicleCount = 58;
+                    pedestrianCount = 118;
                     towerHeightScale = 1.35f;
                     parkChance = 0.09f;
                     residentialChance = 0.22f;
@@ -398,8 +470,8 @@ namespace Izmi
                 case "North America":
                     cityName = "Нью-Йорк";
                     citySeed = 155921;
-                    vehicleCount = 36;
-                    pedestrianCount = 58;
+                    vehicleCount = 56;
+                    pedestrianCount = 104;
                     towerHeightScale = 1.42f;
                     parkChance = 0.12f;
                     residentialChance = 0.22f;
@@ -407,8 +479,8 @@ namespace Izmi
                 case "Africa":
                     cityName = "Найроби";
                     citySeed = 196613;
-                    vehicleCount = 20;
-                    pedestrianCount = 48;
+                    vehicleCount = 38;
+                    pedestrianCount = 88;
                     towerHeightScale = 0.72f;
                     parkChance = 0.18f;
                     residentialChance = 0.48f;
@@ -416,8 +488,8 @@ namespace Izmi
                 case "South America":
                     cityName = "Сан-Паулу";
                     citySeed = 228017;
-                    vehicleCount = 31;
-                    pedestrianCount = 61;
+                    vehicleCount = 50;
+                    pedestrianCount = 108;
                     towerHeightScale = 1.05f;
                     parkChance = 0.17f;
                     residentialChance = 0.43f;
@@ -425,8 +497,8 @@ namespace Izmi
                 case "Australia":
                     cityName = "Сидней";
                     citySeed = 263167;
-                    vehicleCount = 22;
-                    pedestrianCount = 38;
+                    vehicleCount = 40;
+                    pedestrianCount = 78;
                     towerHeightScale = 0.92f;
                     parkChance = 0.28f;
                     residentialChance = 0.5f;
@@ -434,8 +506,8 @@ namespace Izmi
                 case "Middle East":
                     cityName = "Дубай";
                     citySeed = 299993;
-                    vehicleCount = 34;
-                    pedestrianCount = 40;
+                    vehicleCount = 54;
+                    pedestrianCount = 84;
                     towerHeightScale = 1.58f;
                     parkChance = 0.07f;
                     residentialChance = 0.2f;
@@ -443,8 +515,8 @@ namespace Izmi
                 default:
                     cityName = "Сингапур";
                     citySeed = 26082026;
-                    vehicleCount = 30;
-                    pedestrianCount = 56;
+                    vehicleCount = 52;
+                    pedestrianCount = 100;
                     towerHeightScale = 1.22f;
                     parkChance = 0.14f;
                     residentialChance = 0.28f;
@@ -478,7 +550,10 @@ namespace Izmi
                 MaterialFor("Blue Vehicle", new Color(0.035f, 0.17f, 0.42f), 0.3f),
                 MaterialFor("Dark Vehicle", new Color(0.025f, 0.03f, 0.04f), 0.28f)
             };
-            pedestrianMaterial = MaterialFor("Civilian", new Color(0.86f, 0.66f, 0.47f), 0.1f);
+            pedestrianMaterial = MaterialFor("Skin", new Color(0.72f, 0.5f, 0.34f), 0.12f);
+            clothingMaterial = MaterialFor("Civilian Clothing", new Color(0.12f, 0.28f, 0.46f), 0.18f);
+            darkClothingMaterial = MaterialFor("Dark Clothing", new Color(0.045f, 0.065f, 0.09f), 0.12f);
+            wheelMaterial = MaterialFor("Rubber Wheels", new Color(0.012f, 0.014f, 0.018f), 0.04f);
             infectionMaterial = EmissiveMaterial("Infection", new Color(0.82f, 0.025f, 0.015f), 1.8f);
         }
 
