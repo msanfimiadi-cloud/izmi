@@ -464,6 +464,7 @@ namespace Izmi
             DrawResourceRow("МЕДИКАМЕНТЫ", globalOutbreak.MedicalSupply);
             DrawResourceRow("БЕЗОПАСНОСТЬ", globalOutbreak.Security);
             DrawResourceRow("ДОВЕРИЕ", globalOutbreak.PublicTrust);
+            DrawResourceRow("ТОПЛИВО И ЭНЕРГИЯ", globalOutbreak.FuelSupply);
             GUILayout.Space(7f);
 
             GUILayout.Label("ВОЕННАЯ ГОТОВНОСТЬ  " + globalOutbreak.WarReadiness + "%", titleStyle);
@@ -540,6 +541,10 @@ namespace Izmi
             GUILayout.Space(8f);
 
             GUILayout.Label("СНАБЖЕНИЕ И ИНФРАСТРУКТУРА", titleStyle);
+            if (GUILayout.Button("ПЕРЕЗАПУСТИТЬ ТОПЛИВНЫЕ ТЕРМИНАЛЫ  •  27", buttonStyle, GUILayout.Height(38f)))
+            {
+                globalOutbreak.RestartFuelProduction();
+            }
             if (GUILayout.Button("ПРОДОВОЛЬСТВЕННЫЕ КОНВОИ  •  22", buttonStyle, GUILayout.Height(38f)))
             {
                 globalOutbreak.OrganizeFoodConvoys();
