@@ -466,6 +466,21 @@ namespace Izmi
                 eventTextStyle);
             GUILayout.Label(globalOutbreak.SelectedSupplyStatus, titleStyle);
             GUILayout.Label(
+                "УСТОЙЧИВОСТЬ ВЛАСТИ: " + globalOutbreak.SelectedStability + "%  •  " +
+                globalOutbreak.SelectedStabilityStatus,
+                eventTextStyle);
+            DrawCommandBar(globalOutbreak.SelectedStability / 100f);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("ПОДДЕРЖАТЬ ВЛАСТИ\n20", buttonStyle, GUILayout.Height(46f)))
+            {
+                globalOutbreak.SupportSelectedAuthorities();
+            }
+            if (GUILayout.Button("ЧРЕЗВЫЧАЙНЫЙ РЕЖИМ\n18", buttonStyle, GUILayout.Height(46f)))
+            {
+                globalOutbreak.ImposeSelectedEmergencyRule();
+            }
+            GUILayout.EndHorizontal();
+            GUILayout.Label(
                 "ПРИОРИТЕТ ПОМОЩИ: " + globalOutbreak.PriorityRegionName,
                 eventTextStyle);
             if (!globalOutbreak.IsSelectedRegionPriority)
