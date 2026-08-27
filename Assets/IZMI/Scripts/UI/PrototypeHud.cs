@@ -465,6 +465,20 @@ namespace Izmi
                 "РИСК СРЫВА: " + globalOutbreak.SelectedSupplyDisruption + "%",
                 eventTextStyle);
             GUILayout.Label(globalOutbreak.SelectedSupplyStatus, titleStyle);
+            GUILayout.Label(
+                "ПРИОРИТЕТ ПОМОЩИ: " + globalOutbreak.PriorityRegionName,
+                eventTextStyle);
+            if (!globalOutbreak.IsSelectedRegionPriority)
+            {
+                if (GUILayout.Button("НАЗНАЧИТЬ РЕГИОН ПРИОРИТЕТНЫМ  •  10", buttonStyle, GUILayout.Height(38f)))
+                {
+                    globalOutbreak.SetSelectedRegionPriority();
+                }
+            }
+            else if (GUILayout.Button("ОТМЕНИТЬ ПРИОРИТЕТ  •  5", activeButtonStyle, GUILayout.Height(38f)))
+            {
+                globalOutbreak.ClearRegionPriority();
+            }
             if (GUILayout.Button("ДОСТАВИТЬ ПОМОЩЬ В РЕГИОН  •  24", buttonStyle, GUILayout.Height(38f)))
             {
                 globalOutbreak.SendRegionalAid();
