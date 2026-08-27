@@ -417,7 +417,6 @@ namespace Izmi
                 infectionMaterial,
                 infectionMaterial);
             origin.transform.position = new Vector3(2.8f, 0f, -2.8f);
-            origin.AddComponent<MarkerPulse>();
             return origin.transform;
         }
 
