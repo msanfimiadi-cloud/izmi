@@ -20,6 +20,7 @@ namespace Izmi
             public float AnimalRisk;
             public float ReliefStock;
             public float SupplyDisruption;
+            public float Stability;
             public Transform Marker;
             public Renderer MarkerRenderer;
             public Color BaseColor;
@@ -115,6 +116,12 @@ namespace Izmi
         public string PriorityRegionName => string.IsNullOrEmpty(priorityRegionName)
             ? "НЕ НАЗНАЧЕН"
             : RegionDisplayName(priorityRegionName);
+        public int SelectedStability => SelectedRegion == null ? 0 : Mathf.RoundToInt(SelectedRegion.Stability);
+        public string SelectedStabilityStatus => SelectedRegion == null ? "НЕТ ДАННЫХ"
+            : SelectedRegion.Stability < 20f ? "ВЛАСТЬ УТРАЧЕНА"
+            : SelectedRegion.Stability < 45f ? "МАССОВЫЕ БЕСПОРЯДКИ"
+            : SelectedRegion.Stability < 70f ? "НАПРЯЖЕНИЕ"
+            : "РЕГИОН УПРАВЛЯЕМ";
         public long LivingPopulation => Math.Max(0L, TotalPopulation - TotalDead);
         public bool HasOfflineReport => offlineReportVisible;
         public double OfflineElapsedGameMinutes => offlineElapsedGameMinutes;
@@ -683,6 +690,48 @@ namespace Izmi
             return true;
         }
 
+        public bool SupportSelectedAuthorities()
+        {
+            if (SelectedRegion == null ||
+                !HasResources(5f, 2f, 0f, 0f) ||
+                !SpendResponsePoints(20f))
+            {
+                return false;
+            }
+
+            foodSupply -= 5f;
+            medicalSupply -= 2f;
+            SelectedRegion.Stability = Mathf.Min(100f, SelectedRegion.Stability + 22f);
+            SelectedRegion.SupplyDisruption = Mathf.Max(0f, SelectedRegion.SupplyDisruption - 8f);
+            publicTrust = Mathf.Min(100f, publicTrust + 4f);
+            SetResponseMessage("МЕСТНЫЕ СЛУЖБЫ И НАСЕЛЕНИЕ ПОЛУЧИЛИ ПОДДЕРЖКУ");
+            AddNews("Совет поддержал гражданские службы региона «" +
+                RegionDisplayName(SelectedRegion.Name) + "».");
+            SaveRegionalState();
+            return true;
+        }
+
+        public bool ImposeSelectedEmergencyRule()
+        {
+            if (SelectedRegion == null ||
+                !HasResources(0f, 0f, 9f, 4f) ||
+                !SpendResponsePoints(18f))
+            {
+                return false;
+            }
+
+            security -= 9f;
+            publicTrust -= 4f;
+            SelectedRegion.Stability = Mathf.Min(100f, SelectedRegion.Stability + 30f);
+            SelectedRegion.SupplyDisruption = Mathf.Max(0f, SelectedRegion.SupplyDisruption - 14f);
+            warReadiness = Mathf.Min(100f, warReadiness + 2f);
+            SetResponseMessage("В РЕГИОНЕ ВВЕДЁН ЧРЕЗВЫЧАЙНЫЙ РЕЖИМ");
+            AddNews("В регионе «" + RegionDisplayName(SelectedRegion.Name) +
+                "» военные взяли под контроль дороги и распределительные центры.");
+            SaveRegionalState();
+            return true;
+        }
+
         public bool SetSelectedRegionPriority()
         {
             if (SelectedRegion == null || SelectedRegion.Name == priorityRegionName)
@@ -1001,6 +1050,7 @@ namespace Izmi
                 region.AnimalRisk = PlayerPrefs.GetFloat(key + ".Animals", 0f);
                 region.ReliefStock = PlayerPrefs.GetFloat(key + ".Relief", 18f);
                 region.SupplyDisruption = PlayerPrefs.GetFloat(key + ".SupplyDisruption", 10f);
+                region.Stability = PlayerPrefs.GetFloat(key + ".Stability", 82f);
             }
 
             if (!hasStoredWorld)
@@ -1077,6 +1127,7 @@ namespace Izmi
                 PlayerPrefs.SetFloat(key + ".Animals", region.AnimalRisk);
                 PlayerPrefs.SetFloat(key + ".Relief", region.ReliefStock);
                 PlayerPrefs.SetFloat(key + ".SupplyDisruption", region.SupplyDisruption);
+                PlayerPrefs.SetFloat(key + ".Stability", region.Stability);
             }
             SavePolicyState();
             PlayerPrefs.Save();
@@ -1111,6 +1162,7 @@ namespace Izmi
                 Infected = infected,
                 ReliefStock = infected > 0d ? 12f : 28f,
                 SupplyDisruption = infected > 0d ? 24f : 8f,
+                Stability = infected > 0d ? 68f : 84f,
                 Marker = marker,
                 MarkerRenderer = renderer,
                 BaseColor = new Color(0.2f, 0.85f, 1f)
@@ -1150,6 +1202,14 @@ namespace Izmi
                 region.SupplyDisruption = Mathf.Clamp(
                     region.SupplyDisruption + (region.Infected >= 100d ? 0.2f : -0.12f) * (float)gameDays,
                     0f, 100f);
+                var stabilityLoss = (
+                    region.SupplyDisruption * 0.018f +
+                    logisticsPressure * 1.8f +
+                    Mathf.Max(0f, 45f - publicTrust) * 0.012f) * (float)gameDays;
+                if (region.Name == priorityRegionName) stabilityLoss *= 0.65f;
+                region.Stability = Mathf.Clamp(region.Stability - stabilityLoss, 0f, 100f);
+                var stabilityPenalty = Mathf.Clamp01((45f - region.Stability) / 100f);
+                protection = Mathf.Clamp01(protection - stabilityPenalty * 0.22f);
                 var difficultyGrowth = DifficultyLevel == 0 ? 0.72d
                     : DifficultyLevel == 2 ? 1.48d : 1d;
                 var dailyGrowth = 0.24d * difficultyGrowth * (1d - protection) * saturation;
