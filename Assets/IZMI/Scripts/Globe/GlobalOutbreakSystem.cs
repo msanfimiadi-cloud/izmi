@@ -71,6 +71,7 @@ namespace Izmi
         private bool endingReportVisible;
         private int armamentDoctrine;
         private int rationDoctrine;
+        private string priorityRegionName = string.Empty;
 
         public IReadOnlyList<RegionState> Regions => regions;
         public IReadOnlyList<string> NewsFeed => newsFeed;
@@ -110,6 +111,10 @@ namespace Izmi
             : SelectedRegion.SupplyDisruption >= 70f ? "МАРШРУТ СОРВАН"
             : SelectedRegion.SupplyDisruption >= 35f ? "ПОСТАВКИ НЕСТАБИЛЬНЫ"
             : "КОРИДОР РАБОТАЕТ";
+        public bool IsSelectedRegionPriority => SelectedRegion != null && SelectedRegion.Name == priorityRegionName;
+        public string PriorityRegionName => string.IsNullOrEmpty(priorityRegionName)
+            ? "НЕ НАЗНАЧЕН"
+            : RegionDisplayName(priorityRegionName);
         public long LivingPopulation => Math.Max(0L, TotalPopulation - TotalDead);
         public bool HasOfflineReport => offlineReportVisible;
         public double OfflineElapsedGameMinutes => offlineElapsedGameMinutes;
@@ -462,6 +467,25 @@ namespace Izmi
             security -= (InfectedRegions * 0.1f + crisisPressure * 1.25f) * difficultyPressure;
             publicTrust -= (InfectedRegions * 0.08f + crisisPressure * 1.4f) * difficultyPressure;
 
+            if (!string.IsNullOrEmpty(priorityRegionName))
+            {
+                var priorityRegion = regions.Find(region => region.Name == priorityRegionName);
+                if (priorityRegion != null && foodSupply >= 0.8f && medicalSupply >= 0.6f)
+                {
+                    foodSupply -= 0.8f;
+                    medicalSupply -= 0.6f;
+                    priorityRegion.ReliefStock = Mathf.Min(100f, priorityRegion.ReliefStock + 3.2f);
+                    priorityRegion.SupplyDisruption = Mathf.Max(0f, priorityRegion.SupplyDisruption - 1.4f);
+                    foreach (var region in regions)
+                    {
+                        if (region != priorityRegion)
+                        {
+                            region.SupplyDisruption = Mathf.Min(100f, region.SupplyDisruption + 0.22f);
+                        }
+                    }
+                }
+            }
+
             if (armamentDoctrine == 1)
             {
                 security += 0.18f;
@@ -655,6 +679,39 @@ namespace Izmi
             SetResponseMessage("ПОРЯДОК РАСПРЕДЕЛЕНИЯ ПРОДОВОЛЬСТВИЯ ИЗМЕНЁН");
             AddNews("Совет изменил порядок распределения продовольствия: " +
                 RationDoctrine.ToLowerInvariant() + ".");
+            SavePolicyState();
+            return true;
+        }
+
+        public bool SetSelectedRegionPriority()
+        {
+            if (SelectedRegion == null || SelectedRegion.Name == priorityRegionName)
+            {
+                return false;
+            }
+            if (!SpendResponsePoints(10f)) return false;
+
+            priorityRegionName = SelectedRegion.Name;
+            SelectedRegion.ReliefStock = Mathf.Min(100f, SelectedRegion.ReliefStock + 8f);
+            publicTrust = Mathf.Min(100f, publicTrust + 1f);
+            SetResponseMessage("РЕГИОН ПОЛУЧИЛ ПРИОРИТЕТ МЕЖДУНАРОДНОЙ ПОМОЩИ");
+            AddNews("Регион «" + RegionDisplayName(priorityRegionName) +
+                "» назначен главным получателем международной помощи.");
+            SavePolicyState();
+            SaveRegionalState();
+            return true;
+        }
+
+        public bool ClearRegionPriority()
+        {
+            if (string.IsNullOrEmpty(priorityRegionName) || !SpendResponsePoints(5f))
+            {
+                return false;
+            }
+
+            AddNews("Особый приоритет международной помощи отменён.");
+            priorityRegionName = string.Empty;
+            SetResponseMessage("ПОСТАВКИ СНОВА РАСПРЕДЕЛЯЮТСЯ РАВНОМЕРНО");
             SavePolicyState();
             return true;
         }
@@ -894,6 +951,7 @@ namespace Izmi
                 endingType != 0 && PlayerPrefs.GetInt("IZMI.Ending.Acknowledged", 0) == 0;
             armamentDoctrine = PlayerPrefs.GetInt("IZMI.Policy.Armament", 0);
             rationDoctrine = PlayerPrefs.GetInt("IZMI.Policy.Rations", 0);
+            priorityRegionName = PlayerPrefs.GetString("IZMI.Policy.PriorityRegion", string.Empty);
         }
 
         private void SavePolicyState()
@@ -909,6 +967,7 @@ namespace Izmi
             PlayerPrefs.SetInt("IZMI.Survival.Settlements", safeSettlementCount);
             PlayerPrefs.SetInt("IZMI.Policy.Armament", armamentDoctrine);
             PlayerPrefs.SetInt("IZMI.Policy.Rations", rationDoctrine);
+            PlayerPrefs.SetString("IZMI.Policy.PriorityRegion", priorityRegionName);
             PlayerPrefs.SetString("IZMI.Survival.Protected", protectedPopulation.ToString());
             PlayerPrefs.Save();
         }
