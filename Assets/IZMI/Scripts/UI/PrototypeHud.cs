@@ -18,6 +18,8 @@ namespace Izmi
         private Texture2D activeTexture;
         private bool stylesReady;
         private int mobileTab;
+        private int strategySection;
+        private int tutorialStep;
         private Vector2 mobileSummaryScroll;
         private Vector2 mobileStrategyScroll;
 
@@ -282,7 +284,12 @@ namespace Izmi
                         : new Rect(virtualWidth - 388f, safeArea.y + 26f, 360f, Mathf.Min(780f, virtualHeight - safeArea.y - 40f));
                     DrawGlobalStrategyPanel(strategyRect, compactLayout);
                 }
-                if (globalOutbreak.HasEndingReport)
+                var tutorialComplete = PlayerPrefs.GetInt("IZMI.Tutorial.Complete", 0) == 1;
+                if (!tutorialComplete)
+                {
+                    DrawTutorialPanel(scale);
+                }
+                else if (globalOutbreak.HasEndingReport)
                 {
                     DrawEndingPanel(scale);
                 }
@@ -297,6 +304,48 @@ namespace Izmi
             }
 
             GUI.matrix = previousMatrix;
+        }
+
+        private void DrawTutorialPanel(float scale)
+        {
+            var virtualWidth = Screen.width / scale;
+            var virtualHeight = Screen.height / scale;
+            var width = Mathf.Min(540f, virtualWidth - 40f);
+            var rect = new Rect(
+                (virtualWidth - width) * 0.5f,
+                Mathf.Max(20f, virtualHeight - 220f),
+                width,
+                190f);
+
+            var titles = new[]
+            {
+                "1 ИЗ 3  •  ВЫБЕРИТЕ РЕГИОН",
+                "2 ИЗ 3  •  ОТКРОЙТЕ РАЗДЕЛ «РЕГИОН»",
+                "3 ИЗ 3  •  ВОЙДИТЕ В ГОРОД"
+            };
+            var descriptions = new[]
+            {
+                "Нажимайте на светящиеся точки на планете. Слева появятся данные выбранного региона.",
+                "В разделе «Регион» собраны только местные показатели и действия — без глобального шума.",
+                "Нажмите большую кнопку «Войти в город», чтобы увидеть улицы, людей, транспорт и заражённых."
+            };
+
+            GUILayout.BeginArea(rect, panelStyle);
+            GUILayout.Label("КРАТКОЕ ОБУЧЕНИЕ", titleStyle);
+            GUILayout.Label(titles[Mathf.Clamp(tutorialStep, 0, 2)], bodyStyle);
+            GUILayout.Label(descriptions[Mathf.Clamp(tutorialStep, 0, 2)], eventTextStyle);
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button(tutorialStep < 2 ? "ДАЛЕЕ" : "НАЧАТЬ ИГРУ", activeButtonStyle, GUILayout.Height(42f)))
+            {
+                tutorialStep++;
+                if (tutorialStep > 2)
+                {
+                    PlayerPrefs.SetInt("IZMI.Tutorial.Complete", 1);
+                    PlayerPrefs.Save();
+                    strategySection = 1;
+                }
+            }
+            GUILayout.EndArea();
         }
 
         private void DrawEndingPanel(float scale)
@@ -423,147 +472,132 @@ namespace Izmi
         {
             GUILayout.BeginArea(panelRect, panelStyle);
             mobileStrategyScroll = GUILayout.BeginScrollView(mobileStrategyScroll, false, true);
-            GUILayout.Label("МЕЖДУНАРОДНЫЙ КРИЗИСНЫЙ СОВЕТ", titleStyle);
-            GUILayout.Space(5f);
-            GUILayout.Label(
-                "СТРАТЕГИЯ: " + globalOutbreak.StrategicDirection,
-                titleStyle);
-            GUILayout.Label(
-                "ЦЕЛЬ: " + globalOutbreak.CurrentObjective,
-                eventTextStyle);
+
+            GUILayout.Label("КРИЗИСНЫЙ СОВЕТ", bodyStyle);
             GUILayout.Label(
                 "РЕСУРС РЕАГИРОВАНИЯ: " + globalOutbreak.ResponsePoints + " / 100",
                 titleStyle);
             DrawCommandBar(globalOutbreak.ResponsePoints / 100f);
-            GUILayout.Space(7f);
+            GUILayout.Space(8f);
 
+            GUILayout.BeginHorizontal();
+            DrawStrategyTab("ОБЗОР", 0);
+            DrawStrategyTab("РЕГИОН", 1);
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            DrawStrategyTab("МЕДИЦИНА", 2);
+            DrawStrategyTab("РЕШЕНИЯ", 3);
+            GUILayout.EndHorizontal();
+            GUILayout.Space(10f);
+
+            if (strategySection == 0) DrawOverviewSection();
+            else if (strategySection == 1) DrawRegionSection();
+            else if (strategySection == 2) DrawMedicineSection();
+            else DrawDecisionSection();
+
+            GUILayout.Space(8f);
+            GUILayout.Label(globalOutbreak.ResponseMessage, titleStyle);
+            if (!string.IsNullOrEmpty(GUI.tooltip))
+            {
+                GUILayout.Space(5f);
+                GUILayout.Label("ПОДСКАЗКА: " + GUI.tooltip, eventTextStyle);
+            }
+
+            GUILayout.EndScrollView();
+            GUILayout.EndArea();
+        }
+
+        private void DrawStrategyTab(string label, int section)
+        {
+            var style = strategySection == section ? activeButtonStyle : buttonStyle;
+            if (GUILayout.Button(label, style, GUILayout.Height(38f)))
+            {
+                strategySection = section;
+                mobileStrategyScroll = Vector2.zero;
+            }
+        }
+
+        private void DrawOverviewSection()
+        {
             GUILayout.Label("СОСТОЯНИЕ МИРА: " + globalOutbreak.WorldCondition, titleStyle);
-            GUILayout.Label(
-                "МЕЖДУНАРОДНОЕ СОТРУДНИЧЕСТВО: " + globalOutbreak.GlobalCooperation + "%",
-                titleStyle);
-            DrawCommandBar(globalOutbreak.GlobalCooperation / 100f);
-            GUILayout.Label(globalOutbreak.CooperationStatus, eventTextStyle);
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("ПРОВЕСТИ САММИТ\n24", buttonStyle, GUILayout.Height(46f)))
-            {
-                globalOutbreak.HoldInternationalSummit();
-            }
-            if (GUILayout.Button("ИЗЪЯТЬ ЗАПАСЫ\n18", buttonStyle, GUILayout.Height(46f)))
-            {
-                globalOutbreak.RequisitionForeignStockpiles();
-            }
-            GUILayout.EndHorizontal();
-            GUILayout.Label(
-                "ЧЁРНЫЙ РЫНОК: " + globalOutbreak.BlackMarketActivity + "%  •  " +
-                globalOutbreak.BlackMarketStatus,
-                eventTextStyle);
-            DrawCommandBar(globalOutbreak.BlackMarketActivity / 100f);
-            GUILayout.Label(
-                "РАЗВЕДДАННЫЕ: " + globalOutbreak.IntelligenceCoverage + "%  •  " +
-                globalOutbreak.IntelligenceStatus,
-                eventTextStyle);
-            DrawCommandBar(globalOutbreak.IntelligenceCoverage / 100f);
-            if (GUILayout.Button("ВСКРЫТЬ НЕЛЕГАЛЬНЫЕ МАРШРУТЫ  •  22", buttonStyle, GUILayout.Height(42f)))
-            {
-                globalOutbreak.LaunchSmugglingIntelligenceOperation();
-            }
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("СИЛОВЫЕ РЕЙДЫ\n20", buttonStyle, GUILayout.Height(46f)))
-            {
-                globalOutbreak.CrackDownOnBlackMarket();
-            }
-            if (GUILayout.Button("КОНТРОЛИРУЕМЫЙ ОБМЕН\n16", buttonStyle, GUILayout.Height(46f)))
-            {
-                globalOutbreak.RegulateEmergencyTrade();
-            }
-            GUILayout.EndHorizontal();
-            GUILayout.Label(
-                "ПОСЕЛЕНИЯ: " + globalOutbreak.SafeSettlementCount +
-                "   ПОД ЗАЩИТОЙ: " + globalOutbreak.ProtectedPopulation.ToString("N0"),
-                titleStyle);
-            GUILayout.Label(
-                "ВМЕСТИМОСТЬ: " + globalOutbreak.ShelterCapacity.ToString("N0") +
-                "   ЗАПОЛНЕНИЕ: " + globalOutbreak.ShelterOccupancy + "%",
-                eventTextStyle);
-            GUILayout.Label(
-                "САНИТАРИЯ: " + globalOutbreak.CampHealth + "%  •  " +
-                globalOutbreak.CampStatus,
-                eventTextStyle);
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("РАСШИРИТЬ ЛАГЕРЯ\n20", buttonStyle, GUILayout.Height(46f)))
-            {
-                globalOutbreak.ExpandEmergencyCamps();
-            }
-            if (GUILayout.Button("САНИТАРНЫЕ БРИГАДЫ\n18", buttonStyle, GUILayout.Height(46f)))
-            {
-                globalOutbreak.SanitizeShelterNetwork();
-            }
-            GUILayout.EndHorizontal();
+            GUILayout.Label("СТРАТЕГИЯ: " + globalOutbreak.StrategicDirection, titleStyle);
+            GUILayout.Label("ЦЕЛЬ: " + globalOutbreak.CurrentObjective, eventTextStyle);
+            GUILayout.Space(8f);
+
             DrawResourceRow("ЕДА", globalOutbreak.FoodSupply);
             DrawResourceRow("МЕДИКАМЕНТЫ", globalOutbreak.MedicalSupply);
             DrawResourceRow("БЕЗОПАСНОСТЬ", globalOutbreak.Security);
             DrawResourceRow("ДОВЕРИЕ", globalOutbreak.PublicTrust);
-            DrawResourceRow("ТОПЛИВО И ЭНЕРГИЯ", globalOutbreak.FuelSupply);
-            GUILayout.Space(7f);
-
-            GUILayout.Label("ВОЕННАЯ ГОТОВНОСТЬ  " + globalOutbreak.WarReadiness + "%", titleStyle);
-            DrawCommandBar(globalOutbreak.WarReadiness / 100f);
-            GUILayout.Label("ИССЛЕДОВАНИЕ ЛЕЧЕНИЯ  " + globalOutbreak.CureResearch + "%", titleStyle);
-            DrawCommandBar(globalOutbreak.CureResearch / 100f);
-            GUILayout.Label(
-                "МУТАЦИОННОЕ ДАВЛЕНИЕ  " + globalOutbreak.MutationPressure + "%  •  " +
-                globalOutbreak.VariantStatus,
-                eventTextStyle);
-            DrawCommandBar(globalOutbreak.MutationPressure / 100f);
-            if (GUILayout.Button("СЕКВЕНИРОВАТЬ ШТАММ  •  26", buttonStyle, GUILayout.Height(38f)))
-            {
-                globalOutbreak.SequenceCurrentVariant();
-            }
-            GUILayout.Label(
-                "ЗАПАС ВАКЦИНЫ: " + globalOutbreak.VaccineStock + "%  •  " +
-                globalOutbreak.VaccineStatus,
-                eventTextStyle);
-            GUILayout.Label(
-                "ОХВАТ ВЫБРАННОГО РЕГИОНА: " + globalOutbreak.SelectedVaccination + "%",
-                eventTextStyle);
-            GUILayout.Label(
-                "ГОТОВНОСТЬ НАСЕЛЕНИЯ: " + globalOutbreak.VaccineAcceptance + "%  •  " +
-                globalOutbreak.VaccineAcceptanceStatus,
-                eventTextStyle);
-            DrawCommandBar(globalOutbreak.VaccineAcceptance / 100f);
-            if (GUILayout.Button("ИНФОРМАЦИОННАЯ КАМПАНИЯ  •  16", buttonStyle, GUILayout.Height(38f)))
-            {
-                globalOutbreak.RunVaccinationCampaign();
-            }
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("ПРОИЗВЕСТИ ВАКЦИНУ\n24", buttonStyle, GUILayout.Height(46f)))
-            {
-                globalOutbreak.ProduceVaccineBatches();
-            }
-            if (GUILayout.Button("ВАКЦИНИРОВАТЬ РЕГИОН\n18", buttonStyle, GUILayout.Height(46f)))
-            {
-                globalOutbreak.VaccinateSelectedRegion();
-            }
-            GUILayout.EndHorizontal();
-            if (GUILayout.Button("ОБЯЗАТЕЛЬНАЯ ВАКЦИНАЦИЯ РЕГИОНА  •  15", buttonStyle, GUILayout.Height(38f)))
-            {
-                globalOutbreak.EnforceSelectedVaccination();
-            }
-            GUILayout.Label("ГОТОВНОСТЬ УБЕЖИЩ  " + globalOutbreak.ShelterReadiness + "%", titleStyle);
-            DrawCommandBar(globalOutbreak.ShelterReadiness / 100f);
-            GUILayout.Space(7f);
-
-            GUILayout.Label(globalOutbreak.ResponseMessage, titleStyle);
+            DrawResourceRow("ТОПЛИВО", globalOutbreak.FuelSupply);
             GUILayout.Space(8f);
 
-            GUILayout.Label("РЕГИОНАЛЬНАЯ ЛОГИСТИКА", titleStyle);
             GUILayout.Label(
-                "ЗАПАС ПОМОЩИ: " + globalOutbreak.SelectedReliefStock + "%   " +
-                "РИСК СРЫВА: " + globalOutbreak.SelectedSupplyDisruption + "%",
+                "СОТРУДНИЧЕСТВО: " + globalOutbreak.GlobalCooperation + "%",
+                titleStyle);
+            DrawCommandBar(globalOutbreak.GlobalCooperation / 100f);
+            GUILayout.Label(globalOutbreak.CooperationStatus, eventTextStyle);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button(new GUIContent("САММИТ\n24", "Повысить международное сотрудничество."), buttonStyle, GUILayout.Height(46f)))
+                globalOutbreak.HoldInternationalSummit();
+            if (GUILayout.Button(new GUIContent("ИЗЪЯТЬ ЗАПАСЫ\n18", "Быстро получить ресурсы ценой доверия стран."), buttonStyle, GUILayout.Height(46f)))
+                globalOutbreak.RequisitionForeignStockpiles();
+            GUILayout.EndHorizontal();
+            GUILayout.Space(8f);
+
+            GUILayout.Label(
+                "ЧЁРНЫЙ РЫНОК: " + globalOutbreak.BlackMarketActivity + "%",
+                titleStyle);
+            GUILayout.Label(globalOutbreak.BlackMarketStatus, eventTextStyle);
+            DrawCommandBar(globalOutbreak.BlackMarketActivity / 100f);
+            GUILayout.Label(
+                "РАЗВЕДДАННЫЕ: " + globalOutbreak.IntelligenceCoverage + "%",
                 eventTextStyle);
-            GUILayout.Label(globalOutbreak.SelectedSupplyStatus, titleStyle);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button(new GUIContent("РАЗВЕДКА\n22", "Найти нелегальные маршруты распространения."), buttonStyle, GUILayout.Height(46f)))
+                globalOutbreak.LaunchSmugglingIntelligenceOperation();
+            if (GUILayout.Button(new GUIContent("РЕЙДЫ\n20", "Вернуть часть запасов, снизив доверие."), buttonStyle, GUILayout.Height(46f)))
+                globalOutbreak.CrackDownOnBlackMarket();
+            GUILayout.EndHorizontal();
+            if (GUILayout.Button(new GUIContent("КОНТРОЛИРУЕМЫЙ ОБМЕН  •  16", "Снизить нелегальный оборот мирным способом."), buttonStyle, GUILayout.Height(38f)))
+                globalOutbreak.RegulateEmergencyTrade();
+        }
+
+        private void DrawRegionSection()
+        {
+            var selectedName = globalOutbreak.SelectedRegion == null
+                ? "НЕ ВЫБРАН"
+                : LocalizeRegion(globalOutbreak.SelectedRegion.Name);
+            GUILayout.Label("ВЫБРАННЫЙ РЕГИОН", titleStyle);
+            GUILayout.Label(selectedName, bodyStyle);
             GUILayout.Label(
-                "УСТОЙЧИВОСТЬ ВЛАСТИ: " + globalOutbreak.SelectedStability + "%  •  " +
+                "Нажмите на светящийся маркер планеты, чтобы выбрать другой регион.",
+                eventTextStyle);
+            GUILayout.Space(8f);
+
+            if (cityPrototype != null &&
+                GUILayout.Button(
+                    new GUIContent("ВОЙТИ В ГОРОД  →", "Перейти от планеты к живому городу выбранного региона."),
+                    activeButtonStyle,
+                    GUILayout.Height(54f)))
+            {
+                cityPrototype.EnterCity();
+            }
+            GUILayout.Space(10f);
+
+            GUILayout.Label(
+                "ПОМОЩЬ: " + globalOutbreak.SelectedReliefStock + "%   " +
+                "РИСК МАРШРУТА: " + globalOutbreak.SelectedSupplyDisruption + "%",
+                titleStyle);
+            GUILayout.Label(globalOutbreak.SelectedSupplyStatus, eventTextStyle);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button(new GUIContent("ДОСТАВИТЬ\n24", "Отправить еду и медикаменты в выбранный регион."), buttonStyle, GUILayout.Height(46f)))
+                globalOutbreak.SendRegionalAid();
+            if (GUILayout.Button(new GUIContent("ОХРАНЯТЬ\n18", "Снизить риск срыва маршрута."), buttonStyle, GUILayout.Height(46f)))
+                globalOutbreak.SecureSelectedSupplyRoute();
+            GUILayout.EndHorizontal();
+
+            GUILayout.Label(
+                "ВЛАСТЬ: " + globalOutbreak.SelectedStability + "%  •  " +
                 globalOutbreak.SelectedStabilityStatus,
                 eventTextStyle);
             DrawCommandBar(globalOutbreak.SelectedStability / 100f);
@@ -572,104 +606,124 @@ namespace Izmi
                 globalOutbreak.SelectedInfrastructureStatus,
                 eventTextStyle);
             DrawCommandBar(globalOutbreak.SelectedInfrastructure / 100f);
-            if (GUILayout.Button("ВОССТАНОВИТЬ ИНФРАСТРУКТУРУ РЕГИОНА  •  24", buttonStyle, GUILayout.Height(42f)))
-            {
+            if (GUILayout.Button(new GUIContent("ВОССТАНОВИТЬ ИНФРАСТРУКТУРУ  •  24", "Починить дороги, связь, электросети и больницы."), buttonStyle, GUILayout.Height(40f)))
                 globalOutbreak.RestoreSelectedRegionalInfrastructure();
-            }
+
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("ПОДДЕРЖАТЬ ВЛАСТИ\n20", buttonStyle, GUILayout.Height(46f)))
-            {
+            if (GUILayout.Button(new GUIContent("ПОДДЕРЖАТЬ ВЛАСТИ\n20", "Мирно повысить устойчивость региона."), buttonStyle, GUILayout.Height(46f)))
                 globalOutbreak.SupportSelectedAuthorities();
-            }
-            if (GUILayout.Button("ЧРЕЗВЫЧАЙНЫЙ РЕЖИМ\n18", buttonStyle, GUILayout.Height(46f)))
-            {
+            if (GUILayout.Button(new GUIContent("ЧРЕЗВЫЧАЙНЫЙ РЕЖИМ\n18", "Быстро восстановить порядок ценой доверия."), buttonStyle, GUILayout.Height(46f)))
                 globalOutbreak.ImposeSelectedEmergencyRule();
-            }
             GUILayout.EndHorizontal();
+
             GUILayout.Label(
-                "БЕЖЕНЦЫ В РЕГИОНЕ: " + globalOutbreak.SelectedDisplaced.ToString("N0") +
-                "   ВСЕГО В МИРЕ: " + globalOutbreak.TotalDisplaced.ToString("N0"),
+                "БЕЖЕНЦЫ: " + globalOutbreak.SelectedDisplaced.ToString("N0"),
                 eventTextStyle);
-            if (GUILayout.Button("ОТКРЫТЬ ГУМАНИТАРНЫЙ КОРИДОР  •  26", buttonStyle, GUILayout.Height(42f)))
-            {
+            if (GUILayout.Button(new GUIContent("ГУМАНИТАРНЫЙ КОРИДОР  •  26", "Перевести часть беженцев под защиту поселений."), buttonStyle, GUILayout.Height(40f)))
                 globalOutbreak.OpenSelectedHumanitarianCorridor();
-            }
-            GUILayout.Label(
-                "ПРИОРИТЕТ ПОМОЩИ: " + globalOutbreak.PriorityRegionName,
-                eventTextStyle);
+
+            GUILayout.Label("ПРИОРИТЕТ ПОМОЩИ: " + globalOutbreak.PriorityRegionName, eventTextStyle);
             if (!globalOutbreak.IsSelectedRegionPriority)
             {
-                if (GUILayout.Button("НАЗНАЧИТЬ РЕГИОН ПРИОРИТЕТНЫМ  •  10", buttonStyle, GUILayout.Height(38f)))
-                {
+                if (GUILayout.Button(new GUIContent("НАЗНАЧИТЬ ПРИОРИТЕТНЫМ  •  10", "Регион будет регулярно получать помощь."), buttonStyle, GUILayout.Height(38f)))
                     globalOutbreak.SetSelectedRegionPriority();
-                }
             }
             else if (GUILayout.Button("ОТМЕНИТЬ ПРИОРИТЕТ  •  5", activeButtonStyle, GUILayout.Height(38f)))
             {
                 globalOutbreak.ClearRegionPriority();
             }
-            if (GUILayout.Button("ДОСТАВИТЬ ПОМОЩЬ В РЕГИОН  •  24", buttonStyle, GUILayout.Height(38f)))
-            {
-                globalOutbreak.SendRegionalAid();
-            }
-            if (GUILayout.Button("ВЗЯТЬ МАРШРУТ ПОД ОХРАНУ  •  18", buttonStyle, GUILayout.Height(38f)))
-            {
-                globalOutbreak.SecureSelectedSupplyRoute();
-            }
-            GUILayout.Space(8f);
+        }
 
-            GUILayout.Label("СНАБЖЕНИЕ И ИНФРАСТРУКТУРА", titleStyle);
-            if (GUILayout.Button("ПЕРЕЗАПУСТИТЬ ТОПЛИВНЫЕ ТЕРМИНАЛЫ  •  27", buttonStyle, GUILayout.Height(38f)))
-            {
+        private void DrawMedicineSection()
+        {
+            GUILayout.Label("ИССЛЕДОВАНИЕ ЛЕЧЕНИЯ  " + globalOutbreak.CureResearch + "%", titleStyle);
+            DrawCommandBar(globalOutbreak.CureResearch / 100f);
+            if (GUILayout.Button(new GUIContent("ФИНАНСИРОВАТЬ ЛЕЧЕНИЕ  •  35", "Продвинуть основное исследование лечения."), buttonStyle, GUILayout.Height(40f)))
+                globalOutbreak.FundCureResearch();
+
+            GUILayout.Space(8f);
+            GUILayout.Label(
+                "МУТАЦИИ: " + globalOutbreak.MutationPressure + "%  •  " +
+                globalOutbreak.VariantStatus,
+                eventTextStyle);
+            DrawCommandBar(globalOutbreak.MutationPressure / 100f);
+            if (GUILayout.Button(new GUIContent("СЕКВЕНИРОВАТЬ ШТАММ  •  26", "Снизить риск новой мутации и ускорить лечение."), buttonStyle, GUILayout.Height(40f)))
+                globalOutbreak.SequenceCurrentVariant();
+
+            GUILayout.Space(8f);
+            GUILayout.Label(
+                "ЗАПАС ВАКЦИНЫ: " + globalOutbreak.VaccineStock + "%",
+                titleStyle);
+            GUILayout.Label(globalOutbreak.VaccineStatus, eventTextStyle);
+            GUILayout.Label(
+                "ОХВАТ РЕГИОНА: " + globalOutbreak.SelectedVaccination + "%",
+                eventTextStyle);
+            GUILayout.Label(
+                "ГОТОВНОСТЬ НАСЕЛЕНИЯ: " + globalOutbreak.VaccineAcceptance + "%  •  " +
+                globalOutbreak.VaccineAcceptanceStatus,
+                eventTextStyle);
+            DrawCommandBar(globalOutbreak.VaccineAcceptance / 100f);
+            if (GUILayout.Button(new GUIContent("ИНФОРМАЦИОННАЯ КАМПАНИЯ  •  16", "Убедить население вакцинироваться добровольно."), buttonStyle, GUILayout.Height(40f)))
+                globalOutbreak.RunVaccinationCampaign();
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button(new GUIContent("ПРОИЗВЕСТИ\n24", "Создать новую партию вакцины."), buttonStyle, GUILayout.Height(46f)))
+                globalOutbreak.ProduceVaccineBatches();
+            if (GUILayout.Button(new GUIContent("ВАКЦИНИРОВАТЬ\n18", "Распределить вакцину в выбранном регионе."), buttonStyle, GUILayout.Height(46f)))
+                globalOutbreak.VaccinateSelectedRegion();
+            GUILayout.EndHorizontal();
+            if (GUILayout.Button(new GUIContent("ОБЯЗАТЕЛЬНАЯ ВАКЦИНАЦИЯ  •  15", "Быстро увеличить охват ценой доверия и стабильности."), buttonStyle, GUILayout.Height(40f)))
+                globalOutbreak.EnforceSelectedVaccination();
+        }
+
+        private void DrawDecisionSection()
+        {
+            GUILayout.Label("ПРОИЗВОДСТВО И СНАБЖЕНИЕ", titleStyle);
+            if (GUILayout.Button(new GUIContent("ТОПЛИВНЫЕ ТЕРМИНАЛЫ  •  27", "Восстановить мировой запас топлива."), buttonStyle, GUILayout.Height(38f)))
                 globalOutbreak.RestartFuelProduction();
-            }
-            if (GUILayout.Button("ПРОДОВОЛЬСТВЕННЫЕ КОНВОИ  •  22", buttonStyle, GUILayout.Height(38f)))
-            {
+            if (GUILayout.Button(new GUIContent("ПРОДОВОЛЬСТВЕННЫЕ КОНВОИ  •  22", "Пополнить мировой запас еды."), buttonStyle, GUILayout.Height(38f)))
                 globalOutbreak.OrganizeFoodConvoys();
-            }
-            if (GUILayout.Button("ПРОИЗВОДСТВО МЕДИКАМЕНТОВ  •  28", buttonStyle, GUILayout.Height(38f)))
-            {
+            if (GUILayout.Button(new GUIContent("ПРОИЗВОДСТВО МЕДИКАМЕНТОВ  •  28", "Пополнить мировой запас медикаментов."), buttonStyle, GUILayout.Height(38f)))
                 globalOutbreak.ExpandMedicineProduction();
-            }
-            if (GUILayout.Button("ВОССТАНОВИТЬ ИНФРАСТРУКТУРУ  •  20", buttonStyle, GUILayout.Height(38f)))
-            {
+            if (GUILayout.Button(new GUIContent("ВОССТАНОВИТЬ МИРОВУЮ СЕТЬ  •  20", "Повысить безопасность и доверие."), buttonStyle, GUILayout.Height(38f)))
                 globalOutbreak.RestoreInfrastructure();
-            }
-            GUILayout.Space(8f);
 
-            GUILayout.Label("КТО ПОЛУЧИТ ОРУЖИЕ  •  СМЕНА: 18", titleStyle);
-            GUILayout.Label(globalOutbreak.ArmamentDoctrine, eventTextStyle);
+            GUILayout.Space(10f);
+            GUILayout.Label("ПОСЕЛЕНИЯ И УБЕЖИЩА", titleStyle);
+            GUILayout.Label(
+                "ПОД ЗАЩИТОЙ: " + globalOutbreak.ProtectedPopulation.ToString("N0") +
+                " / " + globalOutbreak.ShelterCapacity.ToString("N0"),
+                eventTextStyle);
+            GUILayout.Label(
+                "ЗАПОЛНЕНИЕ: " + globalOutbreak.ShelterOccupancy + "%  •  " +
+                globalOutbreak.CampStatus,
+                eventTextStyle);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("РАСШИРИТЬ ЛАГЕРЯ\n20", buttonStyle, GUILayout.Height(46f)))
+                globalOutbreak.ExpandEmergencyCamps();
+            if (GUILayout.Button("САНИТАРНЫЕ БРИГАДЫ\n18", buttonStyle, GUILayout.Height(46f)))
+                globalOutbreak.SanitizeShelterNetwork();
+            GUILayout.EndHorizontal();
+            if (GUILayout.Button("СТРОИТЬ УБЕЖИЩА  •  30", buttonStyle, GUILayout.Height(38f)))
+                globalOutbreak.BuildShelters();
+
+            GUILayout.Space(10f);
+            GUILayout.Label("ПОСТОЯННЫЕ ДОКТРИНЫ", titleStyle);
+            GUILayout.Label("ОРУЖИЕ: " + globalOutbreak.ArmamentDoctrine, eventTextStyle);
             GUILayout.BeginHorizontal();
             DrawArmamentButton("ГРАЖДАНСКИЕ", 1);
             DrawArmamentButton("ТОЛЬКО АРМИЯ", 2);
             GUILayout.EndHorizontal();
-            GUILayout.Space(7f);
-
-            GUILayout.Label("КОМУ ОТДАВАТЬ ПРОДОВОЛЬСТВИЕ  •  СМЕНА: 12", titleStyle);
-            GUILayout.Label(globalOutbreak.RationDoctrine, eventTextStyle);
+            GUILayout.Label("ПРОДОВОЛЬСТВИЕ: " + globalOutbreak.RationDoctrine, eventTextStyle);
             GUILayout.BeginHorizontal();
             DrawRationButton("МИРНЫМ", 1);
             DrawRationButton("АРМИИ", 2);
             DrawRationButton("ПОСЕЛЕНИЯМ", 3);
             GUILayout.EndHorizontal();
             DrawRationButton("РАВНЫЕ ПАЙКИ", 0);
-            GUILayout.Space(9f);
 
-            if (GUILayout.Button("МОБИЛИЗАЦИЯ И ГРАНИЦЫ  •  25", buttonStyle, GUILayout.Height(36f)))
-            {
+            GUILayout.Space(10f);
+            if (GUILayout.Button("МОБИЛИЗАЦИЯ И ГРАНИЦЫ  •  25", buttonStyle, GUILayout.Height(40f)))
                 globalOutbreak.InvestInDefense();
-            }
-            if (GUILayout.Button("ФИНАНСИРОВАТЬ ЛЕЧЕНИЕ  •  35", buttonStyle, GUILayout.Height(36f)))
-            {
-                globalOutbreak.FundCureResearch();
-            }
-            if (GUILayout.Button("СТРОИТЬ УБЕЖИЩА  •  30", buttonStyle, GUILayout.Height(36f)))
-            {
-                globalOutbreak.BuildShelters();
-            }
-
-            GUILayout.EndScrollView();
-            GUILayout.EndArea();
         }
 
         private Rect GetVirtualSafeArea(float scale)
