@@ -15,6 +15,7 @@ namespace Izmi
         private GlobalOutbreakSystem.RegionState activeRegion;
         private Vector3 globeCameraPosition;
         private Quaternion globeCameraRotation;
+        private float globeNearClip;
         private bool transitioning;
         private float commandPoints = 70f;
         private float messageTimer;
@@ -60,11 +61,52 @@ namespace Izmi
                 }
             }
 
-            if (IsCityView && Keyboard.current != null &&
-                Keyboard.current.escapeKey.wasPressedThisFrame)
+            if (IsCityView)
             {
-                ExitCity();
+                HandleCityCamera();
+                if (Keyboard.current != null &&
+                    Keyboard.current.escapeKey.wasPressedThisFrame)
+                {
+                    ExitCity();
+                }
             }
+        }
+
+        private void HandleCityCamera()
+        {
+            if (worldCamera == null) return;
+
+            var move = Vector3.zero;
+            var keyboard = Keyboard.current;
+            if (keyboard != null)
+            {
+                if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed) move.x -= 1f;
+                if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed) move.x += 1f;
+                if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed) move.z += 1f;
+                if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed) move.z -= 1f;
+            }
+
+            if (move.sqrMagnitude > 0f)
+            {
+                worldCamera.transform.position += move.normalized * Time.unscaledDeltaTime * 12f;
+            }
+
+            var mouse = Mouse.current;
+            if (mouse != null)
+            {
+                var wheel = mouse.scroll.ReadValue().y;
+                if (Mathf.Abs(wheel) > 0.01f)
+                {
+                    worldCamera.transform.position +=
+                        worldCamera.transform.forward * wheel * 0.025f;
+                }
+            }
+
+            var position = worldCamera.transform.position;
+            position.x = Mathf.Clamp(position.x, -30f, 30f);
+            position.y = Mathf.Clamp(position.y, 5.5f, 58f);
+            position.z = Mathf.Clamp(position.z, -52f, 24f);
+            worldCamera.transform.position = position;
         }
 
         public bool TryQuarantine()
@@ -216,6 +258,7 @@ namespace Izmi
             transitioning = true;
             globeCameraPosition = worldCamera.transform.position;
             globeCameraRotation = worldCamera.transform.rotation;
+            globeNearClip = worldCamera.nearClipPlane;
 
             yield return PrototypeScreenFade.FadeTo(1f, 0.45f);
 
@@ -226,9 +269,14 @@ namespace Izmi
             }
 
             cityRoot.SetActive(true);
-            worldCamera.transform.position = new Vector3(0f, 31f, -27f);
-            worldCamera.transform.rotation = Quaternion.Euler(47f, 0f, 0f);
-            worldCamera.fieldOfView = 48f;
+            worldCamera.transform.position = new Vector3(0f, 52f, -48f);
+            worldCamera.transform.rotation = Quaternion.Euler(49f, 0f, 0f);
+            worldCamera.fieldOfView = 52f;
+            worldCamera.nearClipPlane = 0.06f;
+            worldCamera.allowHDR = true;
+            worldCamera.allowMSAA = true;
+            QualitySettings.antiAliasing = Mathf.Max(QualitySettings.antiAliasing, 4);
+            QualitySettings.anisotropicFiltering = AnisotropicFiltering.ForceEnable;
             IsCityView = true;
 
             yield return PrototypeScreenFade.FadeTo(0f, 0.55f);
@@ -250,6 +298,7 @@ namespace Izmi
             worldCamera.transform.position = globeCameraPosition;
             worldCamera.transform.rotation = globeCameraRotation;
             worldCamera.fieldOfView = 42f;
+            worldCamera.nearClipPlane = globeNearClip > 0f ? globeNearClip : 0.1f;
             IsCityView = false;
 
             yield return PrototypeScreenFade.FadeTo(0f, 0.55f);
