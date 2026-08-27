@@ -458,6 +458,15 @@ namespace Izmi
                 globalOutbreak.BlackMarketStatus,
                 eventTextStyle);
             DrawCommandBar(globalOutbreak.BlackMarketActivity / 100f);
+            GUILayout.Label(
+                "РАЗВЕДДАННЫЕ: " + globalOutbreak.IntelligenceCoverage + "%  •  " +
+                globalOutbreak.IntelligenceStatus,
+                eventTextStyle);
+            DrawCommandBar(globalOutbreak.IntelligenceCoverage / 100f);
+            if (GUILayout.Button("ВСКРЫТЬ НЕЛЕГАЛЬНЫЕ МАРШРУТЫ  •  22", buttonStyle, GUILayout.Height(42f)))
+            {
+                globalOutbreak.LaunchSmugglingIntelligenceOperation();
+            }
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("СИЛОВЫЕ РЕЙДЫ\n20", buttonStyle, GUILayout.Height(46f)))
             {
