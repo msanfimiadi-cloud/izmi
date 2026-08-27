@@ -481,6 +481,14 @@ namespace Izmi
             }
             GUILayout.EndHorizontal();
             GUILayout.Label(
+                "БЕЖЕНЦЫ В РЕГИОНЕ: " + globalOutbreak.SelectedDisplaced.ToString("N0") +
+                "   ВСЕГО В МИРЕ: " + globalOutbreak.TotalDisplaced.ToString("N0"),
+                eventTextStyle);
+            if (GUILayout.Button("ОТКРЫТЬ ГУМАНИТАРНЫЙ КОРИДОР  •  26", buttonStyle, GUILayout.Height(42f)))
+            {
+                globalOutbreak.OpenSelectedHumanitarianCorridor();
+            }
+            GUILayout.Label(
                 "ПРИОРИТЕТ ПОМОЩИ: " + globalOutbreak.PriorityRegionName,
                 eventTextStyle);
             if (!globalOutbreak.IsSelectedRegionPriority)
