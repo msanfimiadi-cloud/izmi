@@ -510,6 +510,15 @@ namespace Izmi
             DrawCommandBar(globalOutbreak.WarReadiness / 100f);
             GUILayout.Label("ИССЛЕДОВАНИЕ ЛЕЧЕНИЯ  " + globalOutbreak.CureResearch + "%", titleStyle);
             DrawCommandBar(globalOutbreak.CureResearch / 100f);
+            GUILayout.Label(
+                "МУТАЦИОННОЕ ДАВЛЕНИЕ  " + globalOutbreak.MutationPressure + "%  •  " +
+                globalOutbreak.VariantStatus,
+                eventTextStyle);
+            DrawCommandBar(globalOutbreak.MutationPressure / 100f);
+            if (GUILayout.Button("СЕКВЕНИРОВАТЬ ШТАММ  •  26", buttonStyle, GUILayout.Height(38f)))
+            {
+                globalOutbreak.SequenceCurrentVariant();
+            }
             GUILayout.Label("ГОТОВНОСТЬ УБЕЖИЩ  " + globalOutbreak.ShelterReadiness + "%", titleStyle);
             DrawCommandBar(globalOutbreak.ShelterReadiness / 100f);
             GUILayout.Space(7f);
