@@ -442,6 +442,24 @@ namespace Izmi
                 "ПОСЕЛЕНИЯ: " + globalOutbreak.SafeSettlementCount +
                 "   ПОД ЗАЩИТОЙ: " + globalOutbreak.ProtectedPopulation.ToString("N0"),
                 titleStyle);
+            GUILayout.Label(
+                "ВМЕСТИМОСТЬ: " + globalOutbreak.ShelterCapacity.ToString("N0") +
+                "   ЗАПОЛНЕНИЕ: " + globalOutbreak.ShelterOccupancy + "%",
+                eventTextStyle);
+            GUILayout.Label(
+                "САНИТАРИЯ: " + globalOutbreak.CampHealth + "%  •  " +
+                globalOutbreak.CampStatus,
+                eventTextStyle);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("РАСШИРИТЬ ЛАГЕРЯ\n20", buttonStyle, GUILayout.Height(46f)))
+            {
+                globalOutbreak.ExpandEmergencyCamps();
+            }
+            if (GUILayout.Button("САНИТАРНЫЕ БРИГАДЫ\n18", buttonStyle, GUILayout.Height(46f)))
+            {
+                globalOutbreak.SanitizeShelterNetwork();
+            }
+            GUILayout.EndHorizontal();
             DrawResourceRow("ЕДА", globalOutbreak.FoodSupply);
             DrawResourceRow("МЕДИКАМЕНТЫ", globalOutbreak.MedicalSupply);
             DrawResourceRow("БЕЗОПАСНОСТЬ", globalOutbreak.Security);
