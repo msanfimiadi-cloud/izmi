@@ -18,6 +18,8 @@ namespace Izmi
             public double Recovered;
             public float WaterRisk;
             public float AnimalRisk;
+            public float ReliefStock;
+            public float SupplyDisruption;
             public Transform Marker;
             public Renderer MarkerRenderer;
             public Color BaseColor;
@@ -102,6 +104,12 @@ namespace Izmi
         public int PublicTrust => Mathf.RoundToInt(publicTrust);
         public int SafeSettlementCount => safeSettlementCount;
         public long ProtectedPopulation => protectedPopulation;
+        public int SelectedReliefStock => SelectedRegion == null ? 0 : Mathf.RoundToInt(SelectedRegion.ReliefStock);
+        public int SelectedSupplyDisruption => SelectedRegion == null ? 0 : Mathf.RoundToInt(SelectedRegion.SupplyDisruption);
+        public string SelectedSupplyStatus => SelectedRegion == null ? "НЕТ ДАННЫХ"
+            : SelectedRegion.SupplyDisruption >= 70f ? "МАРШРУТ СОРВАН"
+            : SelectedRegion.SupplyDisruption >= 35f ? "ПОСТАВКИ НЕСТАБИЛЬНЫ"
+            : "КОРИДОР РАБОТАЕТ";
         public long LivingPopulation => Math.Max(0L, TotalPopulation - TotalDead);
         public bool HasOfflineReport => offlineReportVisible;
         public double OfflineElapsedGameMinutes => offlineElapsedGameMinutes;
@@ -651,6 +659,34 @@ namespace Izmi
             return true;
         }
 
+        public bool SendRegionalAid()
+        {
+            if (SelectedRegion == null || !HasResources(8f, 6f, 0f, 0f) || !SpendResponsePoints(24f)) return false;
+            var deliveryFactor = Mathf.Clamp01(1f - SelectedRegion.SupplyDisruption / 125f);
+            foodSupply -= 8f;
+            medicalSupply -= 6f;
+            SelectedRegion.ReliefStock = Mathf.Min(100f, SelectedRegion.ReliefStock + 32f * deliveryFactor);
+            SelectedRegion.SupplyDisruption = Mathf.Min(100f, SelectedRegion.SupplyDisruption + 8f);
+            publicTrust = Mathf.Min(100f, publicTrust + 2f * deliveryFactor);
+            SetResponseMessage(deliveryFactor < 0.5f ? "ЧАСТЬ ГРУЗА ПОТЕРЯНА ПО ДОРОГЕ" : "ГУМАНИТАРНЫЙ ГРУЗ ДОСТАВЛЕН В РЕГИОН");
+            AddNews("В регион «" + RegionDisplayName(SelectedRegion.Name) + "» направлена экстренная партия еды и медикаментов.");
+            SaveRegionalState();
+            return true;
+        }
+
+        public bool SecureSelectedSupplyRoute()
+        {
+            if (SelectedRegion == null || !HasResources(0f, 0f, 7f, 2f) || !SpendResponsePoints(18f)) return false;
+            security -= 7f;
+            publicTrust -= 2f;
+            SelectedRegion.SupplyDisruption = Mathf.Max(0f, SelectedRegion.SupplyDisruption - 30f);
+            warReadiness = Mathf.Min(100f, warReadiness + 1.5f);
+            SetResponseMessage("ТРАНСПОРТНЫЙ КОРИДОР ВЗЯТ ПОД ОХРАНУ");
+            AddNews("Маршрут снабжения региона «" + RegionDisplayName(SelectedRegion.Name) + "» взят под охрану.");
+            SaveRegionalState();
+            return true;
+        }
+
         public bool OrganizeFoodConvoys()
         {
             if (!HasResources(0f, 0f, 5f, 0f) || !SpendResponsePoints(22f)) return false;
@@ -904,6 +940,8 @@ namespace Izmi
 
                 region.WaterRisk = PlayerPrefs.GetFloat(key + ".Water", 0f);
                 region.AnimalRisk = PlayerPrefs.GetFloat(key + ".Animals", 0f);
+                region.ReliefStock = PlayerPrefs.GetFloat(key + ".Relief", 18f);
+                region.SupplyDisruption = PlayerPrefs.GetFloat(key + ".SupplyDisruption", 10f);
             }
 
             if (!hasStoredWorld)
@@ -978,6 +1016,8 @@ namespace Izmi
                     region.Recovered.ToString("R", CultureInfo.InvariantCulture));
                 PlayerPrefs.SetFloat(key + ".Water", region.WaterRisk);
                 PlayerPrefs.SetFloat(key + ".Animals", region.AnimalRisk);
+                PlayerPrefs.SetFloat(key + ".Relief", region.ReliefStock);
+                PlayerPrefs.SetFloat(key + ".SupplyDisruption", region.SupplyDisruption);
             }
             SavePolicyState();
             PlayerPrefs.Save();
@@ -1010,6 +1050,8 @@ namespace Izmi
                 Name = regionName,
                 Population = population,
                 Infected = infected,
+                ReliefStock = infected > 0d ? 12f : 28f,
+                SupplyDisruption = infected > 0d ? 24f : 8f,
                 Marker = marker,
                 MarkerRenderer = renderer,
                 BaseColor = new Color(0.2f, 0.85f, 1f)
@@ -1039,9 +1081,15 @@ namespace Izmi
                 var protection = Mathf.Clamp01(
                     shelterReadiness * 0.004f +
                     cureResearch * 0.003f +
-                    medicalSupply * 0.0012f);
+                    medicalSupply * 0.0012f +
+                    region.ReliefStock * 0.0022f);
                 if (foodSupply < 25f) protection -= 0.12f;
                 protection = Mathf.Clamp01(protection);
+                var logisticsPressure = Mathf.Clamp01((float)(region.Infected / 500000d));
+                region.ReliefStock = Mathf.Max(0f, region.ReliefStock - (0.25f + logisticsPressure * 1.4f) * (float)gameDays);
+                region.SupplyDisruption = Mathf.Clamp(
+                    region.SupplyDisruption + (region.Infected >= 100d ? 0.2f : -0.12f) * (float)gameDays,
+                    0f, 100f);
 
                 var gameDays = deltaTime / 240d;
                 var difficultyGrowth = DifficultyLevel == 0 ? 0.72d
