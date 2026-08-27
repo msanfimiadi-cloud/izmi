@@ -203,6 +203,9 @@ namespace Izmi
                 GUILayout.Label(
                     "РЕГИОН: " + LocalizeRegion(cityPrototype.ActiveRegionName),
                     titleStyle);
+                GUILayout.Label(
+                    "КАМЕРА: КОЛЁСИКО — МАСШТАБ  •  WASD/СТРЕЛКИ — ОБЗОР",
+                    eventTextStyle);
                 GUILayout.Space(3f);
                 GUILayout.Label(
                     "УРОВЕНЬ УГРОЗЫ: " + infection.AlertLevel,
