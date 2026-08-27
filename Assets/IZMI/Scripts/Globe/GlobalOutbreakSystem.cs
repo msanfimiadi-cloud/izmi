@@ -74,6 +74,8 @@ namespace Izmi
         private int armamentDoctrine;
         private int rationDoctrine;
         private string priorityRegionName = string.Empty;
+        private int emergencyCampModules;
+        private float campHealth = 88f;
 
         public IReadOnlyList<RegionState> Regions => regions;
         public IReadOnlyList<string> NewsFeed => newsFeed;
@@ -108,7 +110,18 @@ namespace Izmi
         public int PublicTrust => Mathf.RoundToInt(publicTrust);
         public int SafeSettlementCount => safeSettlementCount;
         public long ProtectedPopulation => protectedPopulation;
-        public int SelectedReliefStock => SelectedRegion == null ? 0 : Mathf.RoundToInt(SelectedRegion.ReliefStock);
+        public long ShelterCapacity => 100000L +
+            safeSettlementCount * 500000L +
+            emergencyCampModules * 250000L +
+            (long)(shelterReadiness * 25000f);
+        public int ShelterOccupancy => ShelterCapacity <= 0L
+            ? 0
+            : Mathf.RoundToInt(protectedPopulation / (float)ShelterCapacity * 100f);
+        public int CampHealth => Mathf.RoundToInt(campHealth);
+        public string CampStatus => ShelterOccupancy > 120 ? "КРИТИЧЕСКОЕ ПЕРЕНАСЕЛЕНИЕ"
+            : ShelterOccupancy > 100 ? "МЕСТ НЕ ХВАТАЕТ"
+            : campHealth < 40f ? "ВСПЫШКИ БОЛЕЗНЕЙ"
+            : "ПОСЕЛЕНИЯ СТАБИЛЬНЫ";        public int SelectedReliefStock => SelectedRegion == null ? 0 : Mathf.RoundToInt(SelectedRegion.ReliefStock);
         public int SelectedSupplyDisruption => SelectedRegion == null ? 0 : Mathf.RoundToInt(SelectedRegion.SupplyDisruption);
         public string SelectedSupplyStatus => SelectedRegion == null ? "НЕТ ДАННЫХ"
             : SelectedRegion.SupplyDisruption >= 70f ? "МАРШРУТ СОРВАН"
@@ -529,6 +542,28 @@ namespace Izmi
                 publicTrust -= 1.5f;
             }
 
+            var overcrowding = ShelterCapacity > 0L
+                ? protectedPopulation / (double)ShelterCapacity
+                : 0d;
+            if (overcrowding > 1d)
+            {
+                var crowdPressure = Mathf.Clamp01((float)(overcrowding - 1d));
+                foodSupply -= crowdPressure * 1.2f;
+                medicalSupply -= crowdPressure * 0.9f;
+                campHealth -= crowdPressure * 5f;
+                publicTrust -= crowdPressure * 0.8f;
+            }
+            else
+            {
+                campHealth += 0.18f;
+            }
+            if (campHealth < 30f && protectedPopulation > 0L)
+            {
+                var campLosses = Math.Max(250L, protectedPopulation / 2000L);
+                protectedPopulation = Math.Max(0L, protectedPopulation - campLosses);
+            }
+            campHealth = Mathf.Clamp(campHealth, 0f, 100f);
+
             if (InfectedRegions <= 1)
             {
                 foodSupply += 0.2f;
@@ -697,6 +732,33 @@ namespace Izmi
             SetResponseMessage("ПОРЯДОК РАСПРЕДЕЛЕНИЯ ПРОДОВОЛЬСТВИЯ ИЗМЕНЁН");
             AddNews("Совет изменил порядок распределения продовольствия: " +
                 RationDoctrine.ToLowerInvariant() + ".");
+            SavePolicyState();
+            return true;
+        }
+
+        public bool ExpandEmergencyCamps()
+        {
+            if (!HasResources(6f, 0f, 4f, 0f) || !SpendResponsePoints(20f)) return false;
+            foodSupply -= 6f;
+            security -= 4f;
+            emergencyCampModules++;
+            shelterReadiness = Mathf.Min(100f, shelterReadiness + 3f);
+            campHealth = Mathf.Min(100f, campHealth + 2f);
+            SetResponseMessage("РАЗВЁРНУТЫ ВРЕМЕННЫЕ ЖИЛЫЕ МОДУЛИ");
+            AddNews("В безопасных зонах развёрнуты дополнительные жилые модули.");
+            SavePolicyState();
+            return true;
+        }
+
+        public bool SanitizeShelterNetwork()
+        {
+            if (!HasResources(2f, 7f, 0f, 0f) || !SpendResponsePoints(18f)) return false;
+            foodSupply -= 2f;
+            medicalSupply -= 7f;
+            campHealth = Mathf.Min(100f, campHealth + 24f);
+            publicTrust = Mathf.Min(100f, publicTrust + 2f);
+            SetResponseMessage("САНИТАРНЫЕ БРИГАДЫ ОБРАБОТАЛИ ПОСЕЛЕНИЯ");
+            AddNews("В лагерях и поселениях проведена массовая санитарная обработка.");
             SavePolicyState();
             return true;
         }
@@ -1039,6 +1101,8 @@ namespace Izmi
                 endingType != 0 && PlayerPrefs.GetInt("IZMI.Ending.Acknowledged", 0) == 0;
             armamentDoctrine = PlayerPrefs.GetInt("IZMI.Policy.Armament", 0);
             rationDoctrine = PlayerPrefs.GetInt("IZMI.Policy.Rations", 0);
+            emergencyCampModules = PlayerPrefs.GetInt("IZMI.Survival.CampModules", 0);
+            campHealth = PlayerPrefs.GetFloat("IZMI.Survival.CampHealth", 88f);
             priorityRegionName = PlayerPrefs.GetString("IZMI.Policy.PriorityRegion", string.Empty);
         }
 
@@ -1055,6 +1119,8 @@ namespace Izmi
             PlayerPrefs.SetInt("IZMI.Survival.Settlements", safeSettlementCount);
             PlayerPrefs.SetInt("IZMI.Policy.Armament", armamentDoctrine);
             PlayerPrefs.SetInt("IZMI.Policy.Rations", rationDoctrine);
+            PlayerPrefs.SetInt("IZMI.Survival.CampModules", emergencyCampModules);
+            PlayerPrefs.SetFloat("IZMI.Survival.CampHealth", campHealth);
             PlayerPrefs.SetString("IZMI.Policy.PriorityRegion", priorityRegionName);
             PlayerPrefs.SetString("IZMI.Survival.Protected", protectedPopulation.ToString());
             PlayerPrefs.Save();
