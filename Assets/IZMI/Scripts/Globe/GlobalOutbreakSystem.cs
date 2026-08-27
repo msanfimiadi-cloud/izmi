@@ -210,7 +210,7 @@ namespace Izmi
         {
             get
             {
-                var weakest = Mathf.Min(Mathf.Min(foodSupply, medicalSupply), Mathf.Min(security, publicTrust));
+                var weakest = Mathf.Min(fuelSupply, Mathf.Min(Mathf.Min(foodSupply, medicalSupply), Mathf.Min(security, publicTrust)));
                 if (weakest < 15f) return "КОЛЛАПС";
                 if (weakest < 35f) return "КРИТИЧЕСКОЕ";
                 if (weakest < 60f) return "НАПРЯЖЁННОЕ";
