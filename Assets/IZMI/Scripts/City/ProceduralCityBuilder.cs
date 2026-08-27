@@ -271,17 +271,12 @@ namespace Izmi
 
                 var vehicleRoot = new GameObject("Moving Vehicle");
                 vehicleRoot.transform.SetParent(root, false);
-                var bodyScale = horizontal
-                    ? new Vector3(0.82f, 0.28f, 0.4f)
-                    : new Vector3(0.4f, 0.28f, 0.82f);
-                CreateCube("Car Body", vehicleRoot.transform, Vector3.zero, bodyScale,
+                CreateCube("Car Body", vehicleRoot.transform, Vector3.zero,
+                    new Vector3(0.44f, 0.28f, 0.92f),
                     vehicleMaterials[Random.Range(0, vehicleMaterials.Length)]);
-                var cabinScale = horizontal
-                    ? new Vector3(0.38f, 0.18f, 0.34f)
-                    : new Vector3(0.34f, 0.18f, 0.38f);
-                CreateCube("Car Cabin", vehicleRoot.transform, new Vector3(0f, 0.2f, 0f),
-                    cabinScale, windowMaterial);
-                CreateVehicleWheels(vehicleRoot.transform, horizontal);
+                CreateCube("Car Cabin", vehicleRoot.transform, new Vector3(0f, 0.2f, -0.04f),
+                    new Vector3(0.36f, 0.2f, 0.46f), windowMaterial);
+                CreateVehicleWheels(vehicleRoot.transform);
                 CreateCube("Vehicle Headlights", vehicleRoot.transform, new Vector3(-0.13f, 0.02f, 0.43f),
                     new Vector3(0.09f, 0.09f, 0.035f), laneMaterial);
                 CreateCube("Vehicle Headlights", vehicleRoot.transform, new Vector3(0.13f, 0.02f, 0.43f),
@@ -396,7 +391,7 @@ namespace Izmi
             limb.GetComponent<Renderer>().sharedMaterial = material;
         }
 
-        private static void CreateVehicleWheels(Transform vehicle, bool horizontal)
+        private static void CreateVehicleWheels(Transform vehicle)
         {
             for (var side = -1; side <= 1; side += 2)
             {
@@ -407,9 +402,8 @@ namespace Izmi
                     wheel.transform.SetParent(vehicle, false);
                     wheel.transform.localScale = new Vector3(0.13f, 0.07f, 0.13f);
                     wheel.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-                    wheel.transform.localPosition = horizontal
-                        ? new Vector3(axle * 0.25f, -0.12f, side * 0.21f)
-                        : new Vector3(side * 0.21f, -0.12f, axle * 0.25f);
+                    wheel.transform.localPosition =
+                        new Vector3(side * 0.23f, -0.12f, axle * 0.29f);
                     wheel.GetComponent<Renderer>().sharedMaterial = wheelMaterial;
                 }
             }
@@ -436,6 +430,8 @@ namespace Izmi
             cube.transform.position = position;
             cube.transform.localScale = scale;
             cube.GetComponent<Renderer>().sharedMaterial = material;
+            var collider = cube.GetComponent<Collider>();
+            if (collider != null) Object.Destroy(collider);
             return cube;
         }
 
@@ -572,7 +568,12 @@ namespace Izmi
         {
             var shader = Shader.Find("Standard");
             if (shader == null) shader = Shader.Find("Universal Render Pipeline/Lit");
-            var material = new Material(shader) { name = materialName, color = color };
+            var material = new Material(shader)
+            {
+                name = materialName,
+                color = color,
+                enableInstancing = true
+            };
             if (material.HasProperty("_Smoothness")) material.SetFloat("_Smoothness", smoothness);
             return material;
         }
