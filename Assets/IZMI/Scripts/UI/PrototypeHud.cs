@@ -488,6 +488,15 @@ namespace Izmi
                 globalOutbreak.SelectedStabilityStatus,
                 eventTextStyle);
             DrawCommandBar(globalOutbreak.SelectedStability / 100f);
+            GUILayout.Label(
+                "ИНФРАСТРУКТУРА: " + globalOutbreak.SelectedInfrastructure + "%  •  " +
+                globalOutbreak.SelectedInfrastructureStatus,
+                eventTextStyle);
+            DrawCommandBar(globalOutbreak.SelectedInfrastructure / 100f);
+            if (GUILayout.Button("ВОССТАНОВИТЬ ИНФРАСТРУКТУРУ РЕГИОНА  •  24", buttonStyle, GUILayout.Height(42f)))
+            {
+                globalOutbreak.RestoreSelectedRegionalInfrastructure();
+            }
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("ПОДДЕРЖАТЬ ВЛАСТИ\n20", buttonStyle, GUILayout.Height(46f)))
             {
