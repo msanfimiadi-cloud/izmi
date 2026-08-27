@@ -16,6 +16,9 @@ namespace Izmi
         private GUIStyle eventTextStyle;
         private Texture2D panelTexture;
         private Texture2D activeTexture;
+        private Texture2D buttonTexture;
+        private Texture2D buttonHoverTexture;
+        private Texture2D buttonPressedTexture;
         private bool stylesReady;
         private int mobileTab;
         private int strategySection;
@@ -500,11 +503,13 @@ namespace Izmi
 
             GUILayout.Space(8f);
             GUILayout.Label(globalOutbreak.ResponseMessage, titleStyle);
-            if (!string.IsNullOrEmpty(GUI.tooltip))
-            {
-                GUILayout.Space(5f);
-                GUILayout.Label("ПОДСКАЗКА: " + GUI.tooltip, eventTextStyle);
-            }
+            GUILayout.Space(5f);
+            GUILayout.Label(
+                string.IsNullOrEmpty(GUI.tooltip)
+                    ? "Наведите на действие, чтобы увидеть последствия."
+                    : "ПОДСКАЗКА: " + GUI.tooltip,
+                eventTextStyle,
+                GUILayout.MinHeight(42f));
 
             GUILayout.EndScrollView();
             GUILayout.EndArea();
@@ -805,7 +810,10 @@ namespace Izmi
             }
 
             panelTexture = CreateSolidTexture(new Color(0.025f, 0.045f, 0.075f, 0.9f));
-            activeTexture = CreateSolidTexture(new Color(0.08f, 0.42f, 0.68f, 0.95f));
+            activeTexture = CreateSolidTexture(new Color(0.06f, 0.48f, 0.78f, 0.98f));
+            buttonTexture = CreateSolidTexture(new Color(0.055f, 0.09f, 0.14f, 0.98f));
+            buttonHoverTexture = CreateSolidTexture(new Color(0.08f, 0.2f, 0.3f, 1f));
+            buttonPressedTexture = CreateSolidTexture(new Color(0.04f, 0.36f, 0.56f, 1f));
 
             panelStyle = new GUIStyle(GUI.skin.box)
             {
@@ -829,9 +837,26 @@ namespace Izmi
 
             buttonStyle = new GUIStyle(GUI.skin.button)
             {
-                fontSize = 15,
+                fontSize = 14,
                 fontStyle = FontStyle.Bold,
-                normal = { textColor = new Color(0.82f, 0.88f, 0.94f) }
+                alignment = TextAnchor.MiddleCenter,
+                padding = new RectOffset(12, 12, 8, 8),
+                margin = new RectOffset(3, 3, 3, 3),
+                normal =
+                {
+                    background = buttonTexture,
+                    textColor = new Color(0.84f, 0.93f, 0.98f)
+                },
+                hover =
+                {
+                    background = buttonHoverTexture,
+                    textColor = Color.white
+                },
+                active =
+                {
+                    background = buttonPressedTexture,
+                    textColor = Color.white
+                }
             };
 
             eventTextStyle = new GUIStyle(GUI.skin.label)
@@ -865,10 +890,10 @@ namespace Izmi
                 Destroy(panelTexture);
             }
 
-            if (activeTexture != null)
-            {
-                Destroy(activeTexture);
-            }
+            if (activeTexture != null) Destroy(activeTexture);
+            if (buttonTexture != null) Destroy(buttonTexture);
+            if (buttonHoverTexture != null) Destroy(buttonHoverTexture);
+            if (buttonPressedTexture != null) Destroy(buttonPressedTexture);
         }
     }
 }
