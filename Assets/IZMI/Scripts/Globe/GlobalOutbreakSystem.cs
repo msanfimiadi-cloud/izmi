@@ -23,6 +23,7 @@ namespace Izmi
             public float Stability;
             public double Displaced;
             public float Infrastructure;
+            public float Vaccination;
             public Transform Marker;
             public Renderer MarkerRenderer;
             public Color BaseColor;
@@ -70,6 +71,7 @@ namespace Izmi
         private float intelligenceCoverage = 20f;
         private float mutationPressure;
         private int variantLevel;
+        private float vaccineStock;
         private int safeSettlementCount;
         private long protectedPopulation;
         private bool offlineReportVisible;
@@ -135,7 +137,14 @@ namespace Izmi
         public string VariantStatus => variantLevel <= 0 ? "ИСХОДНЫЙ ШТАММ"
             : variantLevel == 1 ? "ШТАММ I: ПОВЫШЕННАЯ ЗАРАЗНОСТЬ"
             : variantLevel == 2 ? "ШТАММ II: ТЯЖЁЛОЕ ТЕЧЕНИЕ"
-            : "ШТАММ III: КРИТИЧЕСКАЯ МУТАЦИЯ";        public int SafeSettlementCount => safeSettlementCount;
+            : "ШТАММ III: КРИТИЧЕСКАЯ МУТАЦИЯ";
+        public int VaccineStock => Mathf.RoundToInt(vaccineStock);
+        public int SelectedVaccination => SelectedRegion == null
+            ? 0
+            : Mathf.RoundToInt(SelectedRegion.Vaccination);
+        public string VaccineStatus => cureResearch < 35f ? "ТЕХНОЛОГИЯ ЕЩЁ НЕ ГОТОВА"
+            : vaccineStock < 10f ? "НЕТ ГОТОВЫХ ПАРТИЙ"
+            : "ВАКЦИНА ГОТОВА К РАСПРЕДЕЛЕНИЮ";        public int SafeSettlementCount => safeSettlementCount;
         public long ProtectedPopulation => protectedPopulation;
         public long ShelterCapacity => 100000L +
             safeSettlementCount * 500000L +
@@ -560,13 +569,17 @@ namespace Izmi
                 ? TotalInfected / (double)TotalPopulation
                 : 0d;
             var reservoirPressure = 0f;
+            var vaccinationAverage = 0f;
             foreach (var region in regions)
             {
                 reservoirPressure += (region.WaterRisk + region.AnimalRisk) / 200f;
+                vaccinationAverage += region.Vaccination;
             }
+            if (regions.Count > 0) vaccinationAverage /= regions.Count;
             mutationPressure +=
                 Mathf.Clamp01((float)(infectedRatioForMutation * 450d)) * 1.6f +
-                reservoirPressure * 0.08f;
+                reservoirPressure * 0.08f -
+                vaccinationAverage * 0.004f;
             while (mutationPressure >= 100f && variantLevel < 3)
             {
                 mutationPressure -= 100f;
@@ -832,6 +845,58 @@ namespace Izmi
             AddNews("Совет изменил порядок распределения продовольствия: " +
                 RationDoctrine.ToLowerInvariant() + ".");
             SavePolicyState();
+            return true;
+        }
+
+        public bool ProduceVaccineBatches()
+        {
+            if (cureResearch < 35f)
+            {
+                SetResponseMessage("ДЛЯ ПРОИЗВОДСТВА НУЖНО 35% ИССЛЕДОВАНИЯ");
+                return false;
+            }
+            if (!HasResources(3f, 8f, 0f, 0f) ||
+                !HasFuel(2f) ||
+                !SpendResponsePoints(24f))
+            {
+                return false;
+            }
+
+            foodSupply -= 3f;
+            medicalSupply -= 8f;
+            fuelSupply -= 2f;
+            vaccineStock = Mathf.Min(100f, vaccineStock + 22f);
+            SetResponseMessage("ПРОИЗВЕДЕНА НОВАЯ ПАРТИЯ ВАКЦИНЫ");
+            AddNews("Фармацевтические линии выпустили новую партию вакцины.");
+            SavePolicyState();
+            return true;
+        }
+
+        public bool VaccinateSelectedRegion()
+        {
+            if (SelectedRegion == null || cureResearch < 50f)
+            {
+                SetResponseMessage("ДЛЯ ВАКЦИНАЦИИ НУЖНО 50% ИССЛЕДОВАНИЯ");
+                return false;
+            }
+            if (vaccineStock < 15f)
+            {
+                SetResponseMessage("НЕДОСТАТОЧНО ГОТОВЫХ ДОЗ ВАКЦИНЫ");
+                return false;
+            }
+            if (!HasFuel(3f) || !SpendResponsePoints(18f)) return false;
+
+            vaccineStock -= 15f;
+            fuelSupply -= 3f;
+            SelectedRegion.Vaccination = Mathf.Min(
+                100f,
+                SelectedRegion.Vaccination + 24f);
+            mutationPressure = Mathf.Max(0f, mutationPressure - 5f);
+            publicTrust = Mathf.Min(100f, publicTrust + 2f);
+            SetResponseMessage("В РЕГИОНЕ НАЧАТА МАССОВАЯ ВАКЦИНАЦИЯ");
+            AddNews("В регионе «" + RegionDisplayName(SelectedRegion.Name) +
+                "» началась массовая вакцинация.");
+            SaveRegionalState();
             return true;
         }
 
@@ -1338,6 +1403,7 @@ namespace Izmi
             intelligenceCoverage = PlayerPrefs.GetFloat("IZMI.Policy.Intelligence", 20f);
             mutationPressure = PlayerPrefs.GetFloat("IZMI.Disease.MutationPressure", 0f);
             variantLevel = PlayerPrefs.GetInt("IZMI.Disease.VariantLevel", 0);
+            vaccineStock = PlayerPrefs.GetFloat("IZMI.Disease.VaccineStock", 0f);
             safeSettlementCount = PlayerPrefs.GetInt("IZMI.Survival.Settlements", 0);
             long.TryParse(
                 PlayerPrefs.GetString("IZMI.Survival.Protected", "0"),
@@ -1369,6 +1435,7 @@ namespace Izmi
             PlayerPrefs.SetFloat("IZMI.Policy.Intelligence", intelligenceCoverage);
             PlayerPrefs.SetFloat("IZMI.Disease.MutationPressure", mutationPressure);
             PlayerPrefs.SetInt("IZMI.Disease.VariantLevel", variantLevel);
+            PlayerPrefs.SetFloat("IZMI.Disease.VaccineStock", vaccineStock);
             PlayerPrefs.SetInt("IZMI.Survival.Settlements", safeSettlementCount);
             PlayerPrefs.SetInt("IZMI.Policy.Armament", armamentDoctrine);
             PlayerPrefs.SetInt("IZMI.Policy.Rations", rationDoctrine);
@@ -1410,6 +1477,7 @@ namespace Izmi
                 region.SupplyDisruption = PlayerPrefs.GetFloat(key + ".SupplyDisruption", 10f);
                 region.Stability = PlayerPrefs.GetFloat(key + ".Stability", 82f);
                 region.Infrastructure = PlayerPrefs.GetFloat(key + ".Infrastructure", 86f);
+                region.Vaccination = PlayerPrefs.GetFloat(key + ".Vaccination", 0f);
                 var displacedStored = PlayerPrefs.GetString(key + ".Displaced", "0");
                 if (double.TryParse(displacedStored, NumberStyles.Float, CultureInfo.InvariantCulture, out var displaced))
                 {
@@ -1493,6 +1561,7 @@ namespace Izmi
                 PlayerPrefs.SetFloat(key + ".SupplyDisruption", region.SupplyDisruption);
                 PlayerPrefs.SetFloat(key + ".Stability", region.Stability);
                 PlayerPrefs.SetFloat(key + ".Infrastructure", region.Infrastructure);
+                PlayerPrefs.SetFloat(key + ".Vaccination", region.Vaccination);
                 PlayerPrefs.SetString(
                     key + ".Displaced",
                     region.Displaced.ToString("R", CultureInfo.InvariantCulture));
@@ -1562,7 +1631,8 @@ namespace Izmi
                     shelterReadiness * 0.004f +
                     cureResearch * 0.003f +
                     medicalSupply * 0.0012f +
-                    region.ReliefStock * 0.0022f);
+                    region.ReliefStock * 0.0022f +
+                    region.Vaccination * 0.004f);
                 if (foodSupply < 25f) protection -= 0.12f;
                 protection = Mathf.Clamp01(protection);
                 var gameDays = deltaTime / 240d;
