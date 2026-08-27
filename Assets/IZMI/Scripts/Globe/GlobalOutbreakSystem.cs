@@ -22,6 +22,7 @@ namespace Izmi
             public float SupplyDisruption;
             public float Stability;
             public double Displaced;
+            public float Infrastructure;
             public Transform Marker;
             public Renderer MarkerRenderer;
             public Color BaseColor;
@@ -140,6 +141,14 @@ namespace Izmi
             : SelectedRegion.Stability < 45f ? "МАССОВЫЕ БЕСПОРЯДКИ"
             : SelectedRegion.Stability < 70f ? "НАПРЯЖЕНИЕ"
             : "РЕГИОН УПРАВЛЯЕМ";
+        public int SelectedInfrastructure => SelectedRegion == null
+            ? 0
+            : Mathf.RoundToInt(SelectedRegion.Infrastructure);
+        public string SelectedInfrastructureStatus => SelectedRegion == null ? "НЕТ ДАННЫХ"
+            : SelectedRegion.Infrastructure < 20f ? "ИНФРАСТРУКТУРА РАЗРУШЕНА"
+            : SelectedRegion.Infrastructure < 45f ? "МАССОВЫЕ ОТКЛЮЧЕНИЯ"
+            : SelectedRegion.Infrastructure < 70f ? "ПЕРЕБОИ"
+            : "СИСТЕМЫ РАБОТАЮТ";
         public long LivingPopulation => Math.Max(0L, TotalPopulation - TotalDead);
         public bool HasOfflineReport => offlineReportVisible;
         public double OfflineElapsedGameMinutes => offlineElapsedGameMinutes;
@@ -736,6 +745,35 @@ namespace Izmi
             return true;
         }
 
+        public bool RestoreSelectedRegionalInfrastructure()
+        {
+            if (SelectedRegion == null ||
+                !HasResources(5f, 3f, 6f, 0f) ||
+                !SpendResponsePoints(24f))
+            {
+                return false;
+            }
+
+            foodSupply -= 5f;
+            medicalSupply -= 3f;
+            security -= 6f;
+            SelectedRegion.Infrastructure = Mathf.Min(
+                100f,
+                SelectedRegion.Infrastructure + 28f);
+            SelectedRegion.SupplyDisruption = Mathf.Max(
+                0f,
+                SelectedRegion.SupplyDisruption - 12f);
+            SelectedRegion.Stability = Mathf.Min(
+                100f,
+                SelectedRegion.Stability + 6f);
+            publicTrust = Mathf.Min(100f, publicTrust + 3f);
+            SetResponseMessage("ЭНЕРГИЯ, СВЯЗЬ И БОЛЬНИЦЫ РЕГИОНА ВОССТАНОВЛЕНЫ");
+            AddNews("Инженерные группы восстановили критическую инфраструктуру региона «" +
+                RegionDisplayName(SelectedRegion.Name) + "».");
+            SaveRegionalState();
+            return true;
+        }
+
         public bool ExpandEmergencyCamps()
         {
             if (!HasResources(6f, 0f, 4f, 0f) || !SpendResponsePoints(20f)) return false;
@@ -1156,6 +1194,7 @@ namespace Izmi
                 region.ReliefStock = PlayerPrefs.GetFloat(key + ".Relief", 18f);
                 region.SupplyDisruption = PlayerPrefs.GetFloat(key + ".SupplyDisruption", 10f);
                 region.Stability = PlayerPrefs.GetFloat(key + ".Stability", 82f);
+                region.Infrastructure = PlayerPrefs.GetFloat(key + ".Infrastructure", 86f);
                 var displacedStored = PlayerPrefs.GetString(key + ".Displaced", "0");
                 if (double.TryParse(displacedStored, NumberStyles.Float, CultureInfo.InvariantCulture, out var displaced))
                 {
@@ -1238,6 +1277,7 @@ namespace Izmi
                 PlayerPrefs.SetFloat(key + ".Relief", region.ReliefStock);
                 PlayerPrefs.SetFloat(key + ".SupplyDisruption", region.SupplyDisruption);
                 PlayerPrefs.SetFloat(key + ".Stability", region.Stability);
+                PlayerPrefs.SetFloat(key + ".Infrastructure", region.Infrastructure);
                 PlayerPrefs.SetString(
                     key + ".Displaced",
                     region.Displaced.ToString("R", CultureInfo.InvariantCulture));
@@ -1276,6 +1316,7 @@ namespace Izmi
                 ReliefStock = infected > 0d ? 12f : 28f,
                 SupplyDisruption = infected > 0d ? 24f : 8f,
                 Stability = infected > 0d ? 68f : 84f,
+                Infrastructure = infected > 0d ? 72f : 90f,
                 Marker = marker,
                 MarkerRenderer = renderer,
                 BaseColor = new Color(0.2f, 0.85f, 1f)
@@ -1321,6 +1362,14 @@ namespace Izmi
                     Mathf.Max(0f, 45f - publicTrust) * 0.012f) * (float)gameDays;
                 if (region.Name == priorityRegionName) stabilityLoss *= 0.65f;
                 region.Stability = Mathf.Clamp(region.Stability - stabilityLoss, 0f, 100f);
+                var infrastructureLoss = (
+                    logisticsPressure * 1.2f +
+                    Mathf.Clamp01((45f - region.Stability) / 45f) * 1.1f +
+                    region.SupplyDisruption * 0.008f) * (float)gameDays;
+                region.Infrastructure = Mathf.Clamp(
+                    region.Infrastructure - infrastructureLoss,
+                    0f,
+                    100f);
                 if (region.Stability < 55f)
                 {
                     var displacementPressure =
@@ -1335,14 +1384,22 @@ namespace Izmi
                     region.Displaced += Math.Max(0d, newlyDisplaced);
                 }
                 var stabilityPenalty = Mathf.Clamp01((45f - region.Stability) / 100f);
-                protection = Mathf.Clamp01(protection - stabilityPenalty * 0.22f);
+                var infrastructurePenalty = Mathf.Clamp01(
+                    (55f - region.Infrastructure) / 100f);
+                protection = Mathf.Clamp01(
+                    protection -
+                    stabilityPenalty * 0.22f -
+                    infrastructurePenalty * 0.2f);
                 var difficultyGrowth = DifficultyLevel == 0 ? 0.72d
                     : DifficultyLevel == 2 ? 1.48d : 1d;
                 var dailyGrowth = 0.24d * difficultyGrowth * (1d - protection) * saturation;
                 var newCases = region.Infected * (Math.Exp(dailyGrowth * gameDays) - 1d);
                 region.Infected = Math.Min(availablePopulation, region.Infected + Math.Max(0d, newCases));
 
-                var supplyCrisis = 1d + (100d - medicalSupply) / 45d;
+                var infrastructureMortality = 1d +
+                    Math.Max(0d, 45d - region.Infrastructure) / 35d;
+                var supplyCrisis = (1d + (100d - medicalSupply) / 45d) *
+                    infrastructureMortality;
                 var protectedShare = TotalPopulation > 0L
                     ? Mathf.Clamp01((float)(protectedPopulation / (double)TotalPopulation))
                     : 0f;
