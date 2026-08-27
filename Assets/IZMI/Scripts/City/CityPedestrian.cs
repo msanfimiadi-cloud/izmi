@@ -186,10 +186,21 @@ namespace Izmi
         {
             gait += Time.deltaTime * movementSpeed * (infected ? 9f : 7f);
             var swing = Mathf.Sin(gait) * (infected ? 42f : 28f);
-            if (leftArm != null) leftArm.localRotation = Quaternion.Euler(swing, 0f, 0f);
-            if (rightArm != null) rightArm.localRotation = Quaternion.Euler(-swing, 0f, 0f);
-            if (leftLeg != null) leftLeg.localRotation = Quaternion.Euler(-swing, 0f, 0f);
-            if (rightLeg != null) rightLeg.localRotation = Quaternion.Euler(swing, 0f, 0f);
+            if (infected)
+            {
+                var attackSwing = swing * 0.28f;
+                if (leftArm != null) leftArm.localRotation = Quaternion.Euler(68f + attackSwing, 0f, -10f);
+                if (rightArm != null) rightArm.localRotation = Quaternion.Euler(68f - attackSwing, 0f, 10f);
+                if (leftLeg != null) leftLeg.localRotation = Quaternion.Euler(-swing, 0f, 0f);
+                if (rightLeg != null) rightLeg.localRotation = Quaternion.Euler(swing, 0f, 0f);
+            }
+            else
+            {
+                if (leftArm != null) leftArm.localRotation = Quaternion.Euler(swing, 0f, 0f);
+                if (rightArm != null) rightArm.localRotation = Quaternion.Euler(-swing, 0f, 0f);
+                if (leftLeg != null) leftLeg.localRotation = Quaternion.Euler(-swing, 0f, 0f);
+                if (rightLeg != null) rightLeg.localRotation = Quaternion.Euler(swing, 0f, 0f);
+            }
         }
     }
 }
