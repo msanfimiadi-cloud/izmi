@@ -21,6 +21,7 @@ namespace Izmi
             public float ReliefStock;
             public float SupplyDisruption;
             public float Stability;
+            public double Displaced;
             public Transform Marker;
             public Renderer MarkerRenderer;
             public Color BaseColor;
@@ -80,6 +81,7 @@ namespace Izmi
         public long TotalInfected { get; private set; }
         public long TotalDead { get; private set; }
         public long TotalRecovered { get; private set; }
+        public long TotalDisplaced { get; private set; }
         public int InfectedRegions => infectedRegions;
         public RegionState SelectedRegion { get; private set; }
         public int ResponsePoints => Mathf.FloorToInt(responsePoints);
@@ -116,6 +118,9 @@ namespace Izmi
         public string PriorityRegionName => string.IsNullOrEmpty(priorityRegionName)
             ? "НЕ НАЗНАЧЕН"
             : RegionDisplayName(priorityRegionName);
+        public long SelectedDisplaced => SelectedRegion == null
+            ? 0L
+            : (long)Math.Floor(SelectedRegion.Displaced);
         public int SelectedStability => SelectedRegion == null ? 0 : Mathf.RoundToInt(SelectedRegion.Stability);
         public string SelectedStabilityStatus => SelectedRegion == null ? "НЕТ ДАННЫХ"
             : SelectedRegion.Stability < 20f ? "ВЛАСТЬ УТРАЧЕНА"
@@ -473,6 +478,12 @@ namespace Izmi
             medicalSupply -= (InfectedRegions * 0.14f + crisisPressure * 1.8f) * difficultyPressure;
             security -= (InfectedRegions * 0.1f + crisisPressure * 1.25f) * difficultyPressure;
             publicTrust -= (InfectedRegions * 0.08f + crisisPressure * 1.4f) * difficultyPressure;
+            var displacementRatio = TotalPopulation > 0L
+                ? TotalDisplaced / (double)TotalPopulation
+                : 0d;
+            foodSupply -= Mathf.Clamp01((float)(displacementRatio * 250d)) * 0.9f;
+            security -= Mathf.Clamp01((float)(displacementRatio * 300d)) * 0.75f;
+            publicTrust -= Mathf.Clamp01((float)(displacementRatio * 220d)) * 0.55f;
 
             if (!string.IsNullOrEmpty(priorityRegionName))
             {
@@ -687,6 +698,34 @@ namespace Izmi
             AddNews("Совет изменил порядок распределения продовольствия: " +
                 RationDoctrine.ToLowerInvariant() + ".");
             SavePolicyState();
+            return true;
+        }
+
+        public bool OpenSelectedHumanitarianCorridor()
+        {
+            if (SelectedRegion == null || SelectedRegion.Displaced < 1d)
+            {
+                SetResponseMessage("В РЕГИОНЕ НЕТ ЛЮДЕЙ, ОЖИДАЮЩИХ ЭВАКУАЦИИ");
+                return false;
+            }
+            if (!HasResources(7f, 3f, 5f, 0f) || !SpendResponsePoints(26f)) return false;
+
+            var rescued = Math.Min(
+                SelectedRegion.Displaced,
+                Math.Max(25000d, SelectedRegion.Displaced * 0.35d));
+            foodSupply -= 7f;
+            medicalSupply -= 3f;
+            security -= 5f;
+            SelectedRegion.Displaced -= rescued;
+            protectedPopulation = Math.Min(
+                LivingPopulation,
+                protectedPopulation + (long)Math.Floor(rescued));
+            shelterReadiness = Mathf.Min(100f, shelterReadiness + 2.5f);
+            publicTrust = Mathf.Min(100f, publicTrust + 4f);
+            SetResponseMessage("ГУМАНИТАРНЫЙ КОРИДОР ВЫВЕЛ ЛЮДЕЙ В БЕЗОПАСНУЮ ЗОНУ");
+            AddNews("Из региона «" + RegionDisplayName(SelectedRegion.Name) +
+                "» эвакуировано " + ((long)Math.Floor(rescued)).ToString("N0") + " человек.");
+            SaveRegionalState();
             return true;
         }
 
@@ -1051,6 +1090,11 @@ namespace Izmi
                 region.ReliefStock = PlayerPrefs.GetFloat(key + ".Relief", 18f);
                 region.SupplyDisruption = PlayerPrefs.GetFloat(key + ".SupplyDisruption", 10f);
                 region.Stability = PlayerPrefs.GetFloat(key + ".Stability", 82f);
+                var displacedStored = PlayerPrefs.GetString(key + ".Displaced", "0");
+                if (double.TryParse(displacedStored, NumberStyles.Float, CultureInfo.InvariantCulture, out var displaced))
+                {
+                    region.Displaced = Math.Max(0d, Math.Min(region.Population, displaced));
+                }
             }
 
             if (!hasStoredWorld)
@@ -1128,6 +1172,9 @@ namespace Izmi
                 PlayerPrefs.SetFloat(key + ".Relief", region.ReliefStock);
                 PlayerPrefs.SetFloat(key + ".SupplyDisruption", region.SupplyDisruption);
                 PlayerPrefs.SetFloat(key + ".Stability", region.Stability);
+                PlayerPrefs.SetString(
+                    key + ".Displaced",
+                    region.Displaced.ToString("R", CultureInfo.InvariantCulture));
             }
             SavePolicyState();
             PlayerPrefs.Save();
@@ -1208,6 +1255,19 @@ namespace Izmi
                     Mathf.Max(0f, 45f - publicTrust) * 0.012f) * (float)gameDays;
                 if (region.Name == priorityRegionName) stabilityLoss *= 0.65f;
                 region.Stability = Mathf.Clamp(region.Stability - stabilityLoss, 0f, 100f);
+                if (region.Stability < 55f)
+                {
+                    var displacementPressure =
+                        (55f - region.Stability) / 55f +
+                        logisticsPressure * 0.8f;
+                    var availableCivilians = Math.Max(
+                        0d,
+                        region.Population - region.Dead - region.Infected - region.Displaced);
+                    var newlyDisplaced = Math.Min(
+                        availableCivilians,
+                        region.Population * displacementPressure * 0.00004d * gameDays);
+                    region.Displaced += Math.Max(0d, newlyDisplaced);
+                }
                 var stabilityPenalty = Mathf.Clamp01((45f - region.Stability) / 100f);
                 protection = Mathf.Clamp01(protection - stabilityPenalty * 0.22f);
                 var difficultyGrowth = DifficultyLevel == 0 ? 0.72d
@@ -1400,6 +1460,7 @@ namespace Izmi
             long infected = 0L;
             long dead = 0L;
             long recovered = 0L;
+            long displaced = 0L;
             long population = 0L;
             var affected = 0;
             foreach (var region in regions)
@@ -1409,6 +1470,7 @@ namespace Izmi
                 infected += regionalInfected;
                 dead += (long)Math.Floor(region.Dead);
                 recovered += (long)Math.Floor(region.Recovered);
+                displaced += (long)Math.Floor(region.Displaced);
                 if (regionalInfected > 0)
                 {
                     affected++;
@@ -1419,6 +1481,7 @@ namespace Izmi
             TotalInfected = infected;
             TotalDead = dead;
             TotalRecovered = recovered;
+            TotalDisplaced = displaced;
             infectedRegions = affected;
         }
 
