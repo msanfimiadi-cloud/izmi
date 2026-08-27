@@ -334,11 +334,13 @@ namespace Izmi
                     pedestrianMaterial,
                     index % 3 == 0 ? darkClothingMaterial : clothingMaterial);
 
-                var center = new Vector3(
-                    Random.Range(-30f, 29f),
-                    0f,
-                    Random.Range(-30f, 30f));
-                pedestrian.transform.position = center + Vector3.right;
+                var horizontalSidewalk = Random.value > 0.5f;
+                var roadCoordinate = Random.Range(-5, 6) * 6.2f;
+                var sidewalkSide = Random.value > 0.5f ? 1.15f : -1.15f;
+                var center = horizontalSidewalk
+                    ? new Vector3(Random.Range(-31f, 29f), 0f, roadCoordinate + sidewalkSide)
+                    : new Vector3(roadCoordinate + sidewalkSide, 0f, Random.Range(-32f, 32f));
+                pedestrian.transform.position = center;
                 pedestrian.AddComponent<CityPedestrian>().Configure(
                     center,
                     Random.Range(1.2f, 3.4f),
