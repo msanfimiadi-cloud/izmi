@@ -68,6 +68,8 @@ namespace Izmi
         private float globalCooperation = 66f;
         private float blackMarketActivity = 12f;
         private float intelligenceCoverage = 20f;
+        private float mutationPressure;
+        private int variantLevel;
         private int safeSettlementCount;
         private long protectedPopulation;
         private bool offlineReportVisible;
@@ -127,7 +129,13 @@ namespace Izmi
         public int IntelligenceCoverage => Mathf.RoundToInt(intelligenceCoverage);
         public string IntelligenceStatus => intelligenceCoverage >= 75f ? "СЕТИ КОНТРАБАНДЫ ПРОСЛЕЖИВАЮТСЯ"
             : intelligenceCoverage >= 40f ? "ЧАСТИЧНЫЙ КОНТРОЛЬ МАРШРУТОВ"
-            : "НЕЛЕГАЛЬНЫЕ МАРШРУТЫ НЕИЗВЕСТНЫ";        public int SafeSettlementCount => safeSettlementCount;
+            : "НЕЛЕГАЛЬНЫЕ МАРШРУТЫ НЕИЗВЕСТНЫ";
+        public int MutationPressure => Mathf.RoundToInt(mutationPressure);
+        public int VariantLevel => variantLevel;
+        public string VariantStatus => variantLevel <= 0 ? "ИСХОДНЫЙ ШТАММ"
+            : variantLevel == 1 ? "ШТАММ I: ПОВЫШЕННАЯ ЗАРАЗНОСТЬ"
+            : variantLevel == 2 ? "ШТАММ II: ТЯЖЁЛОЕ ТЕЧЕНИЕ"
+            : "ШТАММ III: КРИТИЧЕСКАЯ МУТАЦИЯ";        public int SafeSettlementCount => safeSettlementCount;
         public long ProtectedPopulation => protectedPopulation;
         public long ShelterCapacity => 100000L +
             safeSettlementCount * 500000L +
@@ -548,6 +556,28 @@ namespace Izmi
             fuelSupply -= smugglingLoss * 0.34f;
             fuelSupply -= (0.12f + InfectedRegions * 0.1f +
                 safeSettlementCount * 0.05f) * difficultyPressure;
+            var infectedRatioForMutation = TotalPopulation > 0L
+                ? TotalInfected / (double)TotalPopulation
+                : 0d;
+            var reservoirPressure = 0f;
+            foreach (var region in regions)
+            {
+                reservoirPressure += (region.WaterRisk + region.AnimalRisk) / 200f;
+            }
+            mutationPressure +=
+                Mathf.Clamp01((float)(infectedRatioForMutation * 450d)) * 1.6f +
+                reservoirPressure * 0.08f;
+            if (mutationPressure >= 100f && variantLevel < 3)
+            {
+                mutationPressure -= 100f;
+                variantLevel++;
+                cureResearch = Mathf.Max(0f, cureResearch - 9f);
+                medicalSupply = Mathf.Max(0f, medicalSupply - 4f);
+                AddNews("Обнаружен новый штамм уровня " + variantLevel +
+                    ". Часть исследований лечения устарела.");
+                SetResponseMessage("ОБНАРУЖЕН НОВЫЙ ШТАММ ИНФЕКЦИИ");
+            }
+
             var displacementRatio = TotalPopulation > 0L
                 ? TotalDisplaced / (double)TotalPopulation
                 : 0d;
@@ -797,6 +827,19 @@ namespace Izmi
             SetResponseMessage("ПОРЯДОК РАСПРЕДЕЛЕНИЯ ПРОДОВОЛЬСТВИЯ ИЗМЕНЁН");
             AddNews("Совет изменил порядок распределения продовольствия: " +
                 RationDoctrine.ToLowerInvariant() + ".");
+            SavePolicyState();
+            return true;
+        }
+
+        public bool SequenceCurrentVariant()
+        {
+            if (!HasResources(0f, 9f, 0f, 0f) || !SpendResponsePoints(26f)) return false;
+            medicalSupply -= 9f;
+            mutationPressure = Mathf.Max(0f, mutationPressure - 34f);
+            cureResearch = Mathf.Min(100f, cureResearch + 7f);
+            globalCooperation = Mathf.Min(100f, globalCooperation + 2f);
+            SetResponseMessage("ГЕНОМ НОВОГО ШТАММА РАСШИФРОВАН");
+            AddNews("Международные лаборатории завершили секвенирование текущего штамма.");
             SavePolicyState();
             return true;
         }
@@ -1289,6 +1332,8 @@ namespace Izmi
             globalCooperation = PlayerPrefs.GetFloat("IZMI.Policy.Cooperation", 66f);
             blackMarketActivity = PlayerPrefs.GetFloat("IZMI.Resource.BlackMarket", 12f);
             intelligenceCoverage = PlayerPrefs.GetFloat("IZMI.Policy.Intelligence", 20f);
+            mutationPressure = PlayerPrefs.GetFloat("IZMI.Disease.MutationPressure", 0f);
+            variantLevel = PlayerPrefs.GetInt("IZMI.Disease.VariantLevel", 0);
             safeSettlementCount = PlayerPrefs.GetInt("IZMI.Survival.Settlements", 0);
             long.TryParse(
                 PlayerPrefs.GetString("IZMI.Survival.Protected", "0"),
@@ -1318,6 +1363,8 @@ namespace Izmi
             PlayerPrefs.SetFloat("IZMI.Policy.Cooperation", globalCooperation);
             PlayerPrefs.SetFloat("IZMI.Resource.BlackMarket", blackMarketActivity);
             PlayerPrefs.SetFloat("IZMI.Policy.Intelligence", intelligenceCoverage);
+            PlayerPrefs.SetFloat("IZMI.Disease.MutationPressure", mutationPressure);
+            PlayerPrefs.SetInt("IZMI.Disease.VariantLevel", variantLevel);
             PlayerPrefs.SetInt("IZMI.Survival.Settlements", safeSettlementCount);
             PlayerPrefs.SetInt("IZMI.Policy.Armament", armamentDoctrine);
             PlayerPrefs.SetInt("IZMI.Policy.Rations", rationDoctrine);
@@ -1556,14 +1603,18 @@ namespace Izmi
                     infrastructurePenalty * 0.2f);
                 var difficultyGrowth = DifficultyLevel == 0 ? 0.72d
                     : DifficultyLevel == 2 ? 1.48d : 1d;
-                var dailyGrowth = 0.24d * difficultyGrowth * (1d - protection) * saturation;
+                var variantGrowth = 1d + variantLevel * 0.16d;
+                var dailyGrowth = 0.24d * difficultyGrowth * variantGrowth *
+                    (1d - protection) * saturation;
                 var newCases = region.Infected * (Math.Exp(dailyGrowth * gameDays) - 1d);
                 region.Infected = Math.Min(availablePopulation, region.Infected + Math.Max(0d, newCases));
 
                 var infrastructureMortality = 1d +
                     Math.Max(0d, 45d - region.Infrastructure) / 35d;
+                var variantMortality = 1d + variantLevel * 0.13d;
                 var supplyCrisis = (1d + (100d - medicalSupply) / 45d) *
-                    infrastructureMortality;
+                    infrastructureMortality *
+                    variantMortality;
                 var protectedShare = TotalPopulation > 0L
                     ? Mathf.Clamp01((float)(protectedPopulation / (double)TotalPopulation))
                     : 0f;
