@@ -580,6 +580,7 @@ namespace Izmi
                 Mathf.Clamp01((float)(infectedRatioForMutation * 450d)) * 1.6f +
                 reservoirPressure * 0.08f -
                 vaccinationAverage * 0.004f;
+            mutationPressure = Mathf.Max(0f, mutationPressure);
             while (mutationPressure >= 100f && variantLevel < 3)
             {
                 mutationPressure -= 100f;
