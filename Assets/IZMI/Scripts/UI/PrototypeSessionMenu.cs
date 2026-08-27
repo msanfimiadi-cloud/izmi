@@ -1,3 +1,5 @@
+using System;
+using System.Reflection;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -167,7 +169,39 @@ namespace Izmi
             PlayerPrefs.SetInt("IZMI.Session.AutoStart", 1);
             PlayerPrefs.Save();
             Time.timeScale = 1f;
+
+            SceneManager.sceneLoaded += RebuildPrototypeAfterReload;
             SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+        }
+
+        private static void RebuildPrototypeAfterReload(Scene scene, LoadSceneMode mode)
+        {
+            SceneManager.sceneLoaded -= RebuildPrototypeAfterReload;
+
+            var assembly = typeof(PrototypeSessionMenu).Assembly;
+            foreach (var type in assembly.GetTypes())
+            {
+                if (string.IsNullOrEmpty(type.Namespace) ||
+                    !type.Namespace.StartsWith("Izmi", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                var methods = type.GetMethods(
+                    BindingFlags.Static |
+                    BindingFlags.Public |
+                    BindingFlags.NonPublic);
+                foreach (var method in methods)
+                {
+                    if (method.GetParameters().Length != 0 ||
+                        method.GetCustomAttribute<RuntimeInitializeOnLoadMethodAttribute>() == null)
+                    {
+                        continue;
+                    }
+
+                    method.Invoke(null, null);
+                }
+            }
         }
 
         private void DrawDifficultySelector()
